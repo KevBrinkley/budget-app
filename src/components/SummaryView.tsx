@@ -1,0 +1,242 @@
+"use client";
+
+import { useMemo, useState } from "react";
+import Link from "next/link";
+import { formatDelta, formatMoneyRounded } from "@/lib/format";
+import { formatMonthLabel } from "@/lib/month";
+import type { SummaryCategoryRow, SummaryData } from "@/lib/types";
+
+export function SummaryView({ data, inboxOpen }: { data: SummaryData; inboxOpen?: number }) {
+  const [expanded, setExpanded] = useState<Record<string, boolean>>({});
+
+  const toggle = (id: string) => {
+    setExpanded((prev) => ({ ...prev, [id]: !prev[id] }));
+  };
+
+  const maxSpend = useMemo(() => {
+    let max = 0;
+    for (const cat of data.categories) {
+      if (cat.spend != null && cat.spend > max) max = cat.spend;
+    }
+    return max || 1;
+  }, [data.categories]);
+
+  const kpis = data.kpis;
+
+  return (
+    <div className="content-inner">
+      <div className="kpi-row cols-3">
+        <Link className="kpi-card" href={`/transactions?month=${data.monthKey}`}>
+          <div className="kpi-label">Total spend</div>
+          <div className="kpi-value">{formatMoneyRounded(kpis.totalSpend)}</div>
+          <div className="kpi-sub">
+            {kpis.totalBudget != null ? (
+              <span className={`delta ${formatDelta((kpis.totalSpend ?? 0) - kpis.totalBudget).cls}`}>
+                {formatDelta((kpis.totalSpend ?? 0) - kpis.totalBudget).text}
+              </span>
+            ) : null}{" "}
+            vs budget
+          </div>
+        </Link>
+        <Link className="kpi-card" href={`/transactions?month=${data.monthKey}`}>
+          <div className="kpi-label">NM/T total</div>
+          <div className="kpi-value">{formatMoneyRounded(kpis.nmtSpend)}</div>
+          <div className="kpi-sub">
+            {kpis.nmtBudget != null ? (
+              <span className={`delta ${formatDelta((kpis.nmtSpend ?? 0) - kpis.nmtBudget).cls}`}>
+                {formatDelta((kpis.nmtSpend ?? 0) - kpis.nmtBudget).text}
+              </span>
+            ) : null}{" "}
+            vs budget
+          </div>
+        </Link>
+        <Link className="kpi-card" href={`/inbox?month=${data.monthKey}`}>
+          <div className="kpi-label">Uncategorized</div>
+          <div className="kpi-value warn">{formatMoneyRounded(kpis.uncategorizedSpend)}</div>
+          <div className="kpi-sub">
+            {inboxOpen != null ? `${inboxOpen} open · ` : ""}
+            {kpis.uncategorizedSpend != null && kpis.uncategorizedSpend > 0 ? (
+              <span className={`delta ${formatDelta(kpis.uncategorizedSpend).cls}`}>
+                {formatDelta(kpis.uncategorizedSpend).text}
+              </span>
+            ) : null}
+          </div>
+        </Link>
+      </div>
+
+      <div className="section-card">
+        <div className="section-header">
+          Category breakdown{" "}
+          <span className="section-sub">Expand a category for sub-category totals</span>
+        </div>
+        <div className="table-wrap">
+          <table className="data-table summary-table">
+            <thead>
+              <tr>
+                <th>Category</th>
+                <th className="num">Spend</th>
+                <th className="num">Budget</th>
+                <th className="num">Over / under</th>
+                <th className="num hide-sm">% of total</th>
+              </tr>
+            </thead>
+            <tbody>
+              {data.categories.map((cat) => (
+                <CategoryBlock
+                  key={cat.id}
+                  cat={cat}
+                  monthKey={data.monthKey}
+                  expanded={Boolean(expanded[cat.id])}
+                  onToggle={() => toggle(cat.id)}
+                  totalSpend={data.totalSpendForPct}
+                  maxSpend={maxSpend}
+                />
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>
+        {(inboxOpen ?? 0) > 0 ? (
+          <Link className="btn-primary inline" href={`/inbox?month=${data.monthKey}`}>
+            Review inbox ({inboxOpen})
+          </Link>
+        ) : null}
+        <Link className="btn-ghost" href={`/transactions?month=${data.monthKey}`} style={{ display: "inline-flex", alignItems: "center", minHeight: 36 }}>
+          View all transactions
+        </Link>
+      </div>
+    </div>
+  );
+}
+
+function CategoryBlock({
+  cat,
+  monthKey,
+  expanded,
+  onToggle,
+  totalSpend,
+  maxSpend,
+}: {
+  cat: SummaryCategoryRow;
+  monthKey: string;
+  expanded: boolean;
+  onToggle: () => void;
+  totalSpend: number;
+  maxSpend: number;
+}) {
+  const spendOver =
+    cat.spend != null && cat.budget != null && cat.spend > cat.budget;
+  const pct =
+    cat.spend != null && totalSpend > 0
+      ? Math.round((cat.spend / totalSpend) * 100)
+      : null;
+  const barWidth =
+    cat.spend != null && maxSpend > 0
+      ? Math.min(100, Math.round((cat.spend / maxSpend) * 100))
+      : 0;
+
+  const txnHref = (sub?: string) => {
+    const params = new URLSearchParams({ month: monthKey, category: cat.category });
+    if (sub) params.set("sub", sub);
+    return `/transactions?${params.toString()}`;
+  };
+
+  if (cat.isUncategorized) {
+    return (
+      <tr className="sum-cat-row" onClick={() => (window.location.href = `/inbox?month=${monthKey}`)} style={{ cursor: "pointer" }}>
+        <td className="sum-cat-cell">
+          <span className="sum-expand-spacer" aria-hidden="true" />
+          <span className="sum-cat-label" style={{ color: "var(--blue)" }}>
+            Uncategorized
+          </span>
+        </td>
+        <td className={`num amt${spendOver ? " amt-over" : ""}`} style={{ color: "var(--blue)" }}>
+          {formatMoneyRounded(cat.spend)}
+        </td>
+        <td className="num">—</td>
+        <td className="num">
+          <span className={`delta ${formatDelta(cat.overUnder).cls}`}>{formatDelta(cat.overUnder).text}</span>
+        </td>
+        <td className="num hide-sm">—</td>
+      </tr>
+    );
+  }
+
+  return (
+    <>
+      <tr className={`sum-cat-row${expanded ? " expanded" : ""}`}>
+        <td className="sum-cat-cell">
+          {cat.subs.length > 0 ? (
+            <button
+              type="button"
+              className={`sum-expand-btn${expanded ? " expanded" : ""}`}
+              aria-expanded={expanded}
+              aria-label={`${expanded ? "Collapse" : "Expand"} ${cat.label}`}
+              onClick={(e) => {
+                e.stopPropagation();
+                onToggle();
+              }}
+            >
+              <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                <path d="M8.59 16.59 13.17 12 8.59 7.41 10 6l6 6-6 6z" />
+              </svg>
+            </button>
+          ) : (
+            <span className="sum-expand-spacer" aria-hidden="true" />
+          )}
+          <span className="sum-cat-label">{cat.label}</span>
+        </td>
+        <td className={`num amt${spendOver ? " amt-over" : ""}`}>{formatMoneyRounded(cat.spend)}</td>
+        <td className="num">{formatMoneyRounded(cat.budget)}</td>
+        <td className="num">
+          <span className={`delta ${formatDelta(cat.overUnder).cls}`}>
+            {formatDelta(cat.overUnder).text}
+          </span>
+        </td>
+        <td className="num hide-sm">
+          <div className="bar-cell">
+            <div className="bar-bg">
+              <div className="bar-fill" style={{ width: `${barWidth}%` }} />
+            </div>
+            {pct != null ? `${pct}%` : "—"}
+          </div>
+        </td>
+      </tr>
+      {cat.subs.map((sub) => {
+        const subOver =
+          sub.spend != null && sub.budget != null && sub.spend > sub.budget;
+        const subPct =
+          sub.spend != null && totalSpend > 0
+            ? Math.round((sub.spend / totalSpend) * 100)
+            : null;
+        return (
+          <tr
+            key={sub.id}
+            className="sum-sub-row"
+            hidden={!expanded}
+            style={{ cursor: "pointer" }}
+            onClick={() => (window.location.href = txnHref(sub.label))}
+          >
+            <td className="sum-cat-cell">
+              <span className="sum-cat-label">{sub.label}</span>
+            </td>
+            <td className={`num amt${subOver ? " amt-over" : ""}`}>{formatMoneyRounded(sub.spend)}</td>
+            <td className="num">{formatMoneyRounded(sub.budget)}</td>
+            <td className="num">
+              <span className={`delta ${formatDelta(sub.overUnder).cls}`}>
+                {formatDelta(sub.overUnder).text}
+              </span>
+            </td>
+            <td className="num hide-sm">{subPct != null ? `${subPct}%` : "—"}</td>
+          </tr>
+        );
+      })}
+    </>
+  );
+}
+
+export function summaryPageTitle(monthKey: string): string {
+  return `${formatMonthLabel(monthKey)} Summary`;
+}
