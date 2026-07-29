@@ -1686,3 +1686,85 @@ table.data-table {
 
 .breadcrumb { font-size: 11px; color: var(--gray-5); margin-bottom: 4px; }
 .breadcrumb a { color: var(--blue); text-decoration: none; font-weight: 600; }
+
+/* Keyword edit modal */
+.kw-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.4);
+  z-index: 500;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+}
+.kw-modal {
+  background: var(--surface);
+  border-radius: var(--radius);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.18);
+  width: 100%;
+  max-width: 420px;
+  display: flex;
+  flex-direction: column;
+}
+.kw-modal-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  padding: 16px 16px 12px;
+  border-bottom: 1px solid var(--border);
+}
+.kw-modal-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--navy);
+}
+.kw-modal-sub {
+  font-size: 12px;
+  color: var(--gray-5);
+  margin-top: 2px;
+}
+.kw-modal-close {
+  background: none;
+  border: none;
+  font-size: 22px;
+  line-height: 1;
+  color: var(--gray-4);
+  cursor: pointer;
+  padding: 0 2px;
+}
+.kw-modal-close:hover { color: var(--text); }
+.kw-modal-body { padding: 16px; }
+.kw-modal-textarea {
+  width: 100%;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 8px 10px;
+  font-family: var(--font);
+  font-size: 13px;
+  color: var(--text);
+  background: var(--surface);
+  resize: vertical;
+}
+.kw-modal-textarea:focus {
+  border-color: var(--blue);
+  outline: none;
+  box-shadow: 0 0 0 1px var(--blue);
+}
+.kw-modal-hint {
+  margin: 8px 0 0;
+  font-size: 11px;
+  color: var(--gray-5);
+}
+.kw-modal-error {
+  margin: 8px 0 0;
+  font-size: 12px;
+  color: var(--red);
+}
+.kw-modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 12px 16px;
+  border-top: 1px solid var(--border);
+}

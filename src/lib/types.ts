@@ -51,6 +51,7 @@ export type InboxRow = {
 };
 
 export type ReferenceRow = {
+  sheetRow: number;
   category: string;
   subCategory: string;
   keywords: string;

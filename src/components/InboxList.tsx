@@ -41,7 +41,7 @@ export function InboxList({ monthKey, initialRef, initialRows, summaryKpis }: Pr
     window.setTimeout(() => setToast(""), 3200);
   }, []);
 
-  async function saveRow(row: InboxRow, category: string, subCategory: string) {
+  async function saveRow(row: InboxRow, category: string, subCategory: string, travel: boolean) {
     if (!category || !subCategory) {
       showToast("Pick category and subcategory");
       return;
@@ -56,6 +56,7 @@ export function InboxList({ monthKey, initialRef, initialRows, summaryKpis }: Pr
           sheetRow: row.sheetRow,
           category,
           subCategory,
+          travel,
         }),
       });
       const data = await res.json();
@@ -194,7 +195,8 @@ export function InboxList({ monthKey, initialRef, initialRows, summaryKpis }: Pr
                 onToggle={() =>
                   setOpenRow((cur) => (cur === row.sheetRow ? null : row.sheetRow))
                 }
-                onSave={saveRow}
+                onSave={(r, cat, sub, travel) => saveRow(r, cat, sub, travel)}
+                onToast={showToast}
               />
             ))}
           </div>
@@ -204,6 +206,12 @@ export function InboxList({ monthKey, initialRef, initialRows, summaryKpis }: Pr
   );
 }
 
+type KwModal = {
+  keyword: string;
+  category: string;
+  subCategory: string;
+};
+
 function InboxItem({
   row,
   ref,
@@ -212,6 +220,7 @@ function InboxItem({
   saving,
   onToggle,
   onSave,
+  onToast,
 }: {
   row: InboxRow;
   ref: CategoryRef;
@@ -219,79 +228,214 @@ function InboxItem({
   open: boolean;
   saving: boolean;
   onToggle: () => void;
-  onSave: (row: InboxRow, cat: string, sub: string) => void;
+  onSave: (row: InboxRow, cat: string, sub: string, travel: boolean) => void;
+  onToast: (msg: string) => void;
 }) {
   const [category, setCategory] = useState("");
   const [subCategory, setSubCategory] = useState("");
+  const [travel, setTravel] = useState(false);
   const subs = category ? ref[category] || [] : [];
 
+  const [kwModal, setKwModal] = useState<KwModal | null>(null);
+  const [kwSaving, setKwSaving] = useState(false);
+  const [kwError, setKwError] = useState("");
+  const kwSubs = kwModal?.category ? ref[kwModal.category] || [] : [];
+
+  useEffect(() => {
+    if (!kwModal) return;
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape") setKwModal(null);
+    }
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [kwModal]);
+
+  function openKwModal() {
+    setKwModal({ keyword: row.desc, category, subCategory });
+    setKwError("");
+  }
+
+  async function saveKeyword() {
+    if (!kwModal) return;
+    if (!kwModal.keyword.trim()) { setKwError("Enter a keyword"); return; }
+    if (!kwModal.category || !kwModal.subCategory) { setKwError("Pick category and sub-category"); return; }
+    setKwSaving(true);
+    setKwError("");
+    try {
+      const res = await fetch("/api/categories/add-keyword", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          keyword: kwModal.keyword.trim(),
+          category: kwModal.category,
+          subCategory: kwModal.subCategory,
+        }),
+      });
+      const data = await res.json();
+      if (!data.ok) { setKwError(data.error || "Save failed"); return; }
+      setKwModal(null);
+      onToast("Keyword saved");
+    } catch {
+      setKwError("Network error — try again");
+    } finally {
+      setKwSaving(false);
+    }
+  }
+
   return (
-    <article className={`acc-item${open ? " open" : ""}`} role="listitem">
-      <button
-        type="button"
-        className="acc-head"
-        aria-expanded={open}
-        onClick={onToggle}
-      >
-        <div className="tx-top">
-          <span className="tx-desc">{row.amt}</span>
-          <span className="tx-date">{row.date}</span>
-        </div>
-        <p className="inbox-merchant">{row.desc}</p>
-        <div className="tx-meta">
-          <span
-            className="badge"
-            style={{ background: "var(--gray-2)", color: "var(--gray-6)" }}
-          >
-            Uncategorized
-          </span>
-        </div>
-      </button>
-      {open ? (
-        <div className="acc-panel">
-          <div className="field">
-            <label>Category</label>
-            <select
-              value={category}
-              onChange={(e) => {
-                setCategory(e.target.value);
-                setSubCategory("");
+    <>
+      <article className={`acc-item${open ? " open" : ""}`} role="listitem">
+        <button
+          type="button"
+          className="acc-head"
+          aria-expanded={open}
+          onClick={onToggle}
+        >
+          <div className="tx-top">
+            <span className="tx-desc">{row.amt}</span>
+            <span className="tx-date">{row.date}</span>
+          </div>
+          <p className="inbox-merchant">{row.desc}</p>
+          <div className="tx-meta">
+            <span
+              className="badge"
+              style={{ background: "var(--gray-2)", color: "var(--gray-6)" }}
+            >
+              Uncategorized
+            </span>
+          </div>
+        </button>
+        {open ? (
+          <div className="acc-panel">
+            <div className="field">
+              <label>Category</label>
+              <select
+                value={category}
+                onChange={(e) => {
+                  setCategory(e.target.value);
+                  setSubCategory("");
+                }}
+              >
+                <option value="">Choose…</option>
+                {categories.map((c) => (
+                  <option key={c} value={c}>
+                    {c}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="field">
+              <label>Sub-category</label>
+              <select
+                value={subCategory}
+                onChange={(e) => setSubCategory(e.target.value)}
+                disabled={!category}
+              >
+                <option value="">Choose…</option>
+                {subs.map((s) => (
+                  <option key={s} value={s}>
+                    {s}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <label
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 8,
+                marginTop: 14,
+                fontSize: 13,
+                fontWeight: 600,
+                color: "var(--navy)",
+                cursor: "pointer",
               }}
             >
-              <option value="">Choose…</option>
-              {categories.map((c) => (
-                <option key={c} value={c}>
-                  {c}
-                </option>
-              ))}
-            </select>
+              <input
+                type="checkbox"
+                checked={travel}
+                onChange={(e) => setTravel(e.target.checked)}
+                style={{ width: 16, height: 16, accentColor: "var(--blue)", cursor: "pointer" }}
+              />
+              Corporate Travel
+            </label>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, marginTop: 12 }}>
+              <button
+                type="button"
+                className="btn-primary inline"
+                disabled={saving}
+                onClick={() => onSave(row, category, subCategory, travel)}
+              >
+                {saving ? "Saving…" : "Save"}
+              </button>
+              <button
+                type="button"
+                className="btn-secondary"
+                style={{ marginTop: 0, width: "auto" }}
+                onClick={openKwModal}
+              >
+                Add Keyword
+              </button>
+            </div>
           </div>
-          <div className="field">
-            <label>Sub-category</label>
-            <select
-              value={subCategory}
-              onChange={(e) => setSubCategory(e.target.value)}
-              disabled={!category}
-            >
-              <option value="">Choose…</option>
-              {subs.map((s) => (
-                <option key={s} value={s}>
-                  {s}
-                </option>
-              ))}
-            </select>
+        ) : null}
+      </article>
+
+      {kwModal ? (
+        <div className="kw-modal-backdrop" onClick={() => !kwSaving && setKwModal(null)}>
+          <div className="kw-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="kw-modal-header">
+              <div>
+                <div className="kw-modal-title">Add Keyword</div>
+                <div className="kw-modal-sub">Writes to your Reference sheet</div>
+              </div>
+              <button className="kw-modal-close" onClick={() => setKwModal(null)} aria-label="Close">×</button>
+            </div>
+            <div className="kw-modal-body">
+              <div className="field" style={{ marginTop: 0 }}>
+                <label style={{ display: "block", fontSize: 11, fontWeight: 600, color: "var(--gray-5)", textTransform: "uppercase", letterSpacing: "0.04em", marginBottom: 4 }}>Keyword</label>
+                <input
+                  autoFocus
+                  type="text"
+                  value={kwModal.keyword}
+                  onChange={(e) => setKwModal({ ...kwModal, keyword: e.target.value })}
+                  style={{ width: "100%", minHeight: "var(--control-h)", border: "1px solid var(--border)", borderRadius: 6, padding: "0 10px", fontFamily: "var(--font)", fontSize: 13, background: "var(--surface)" }}
+                />
+              </div>
+              <div className="field">
+                <label style={{ display: "block", fontSize: 11, fontWeight: 600, color: "var(--gray-5)", textTransform: "uppercase", letterSpacing: "0.04em", marginBottom: 4 }}>Category</label>
+                <select
+                  value={kwModal.category}
+                  onChange={(e) => setKwModal({ ...kwModal, category: e.target.value, subCategory: "" })}
+                  style={{ width: "100%", minHeight: "var(--control-h)", border: "1px solid var(--border)", borderRadius: 6, padding: "0 10px", fontFamily: "var(--font)", fontSize: 13, background: "var(--surface)" }}
+                >
+                  <option value="">Choose…</option>
+                  {categories.map((c) => <option key={c} value={c}>{c}</option>)}
+                </select>
+              </div>
+              <div className="field">
+                <label style={{ display: "block", fontSize: 11, fontWeight: 600, color: "var(--gray-5)", textTransform: "uppercase", letterSpacing: "0.04em", marginBottom: 4 }}>Sub-category</label>
+                <select
+                  value={kwModal.subCategory}
+                  onChange={(e) => setKwModal({ ...kwModal, subCategory: e.target.value })}
+                  disabled={!kwModal.category}
+                  style={{ width: "100%", minHeight: "var(--control-h)", border: "1px solid var(--border)", borderRadius: 6, padding: "0 10px", fontFamily: "var(--font)", fontSize: 13, background: "var(--surface)" }}
+                >
+                  <option value="">Choose…</option>
+                  {kwSubs.map((s) => <option key={s} value={s}>{s}</option>)}
+                </select>
+              </div>
+              {kwError && <p className="kw-modal-error">{kwError}</p>}
+            </div>
+            <div className="kw-modal-footer">
+              <button className="btn-secondary" style={{ marginTop: 0, width: "auto" }} onClick={() => setKwModal(null)} disabled={kwSaving}>Cancel</button>
+              <button className="btn-primary inline" onClick={saveKeyword} disabled={kwSaving}>
+                {kwSaving ? "Saving…" : "Save Keyword"}
+              </button>
+            </div>
           </div>
-          <button
-            type="button"
-            className="btn-primary inline"
-            style={{ marginTop: 12 }}
-            disabled={saving}
-            onClick={() => onSave(row, category, subCategory)}
-          >
-            {saving ? "Saving…" : "Save"}
-          </button>
         </div>
       ) : null}
-    </article>
+    </>
   );
 }

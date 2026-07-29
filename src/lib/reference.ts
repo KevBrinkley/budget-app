@@ -19,7 +19,8 @@ export async function getReferenceData(): Promise<ReferenceData> {
   const flatRows: ReferenceData["rows"] = [];
   let lastCategory: string | null = null;
 
-  for (const row of rows) {
+  for (let i = 0; i < rows.length; i++) {
+    const row = rows[i];
     const category = normalizeCell(row[0]);
     const subCategory = normalizeCell(row[1]);
     const keywords = normalizeCell(row[2]);
@@ -28,6 +29,7 @@ export async function getReferenceData(): Promise<ReferenceData> {
     if (!category && !subCategory) continue;
 
     flatRows.push({
+      sheetRow: i + 2, // Reference!A2 is index 0 → sheet row 2
       category,
       subCategory,
       keywords,

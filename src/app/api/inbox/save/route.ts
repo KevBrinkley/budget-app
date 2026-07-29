@@ -16,6 +16,7 @@ export async function POST(request: Request) {
     sheetRow?: number;
     category?: string;
     subCategory?: string;
+    travel?: boolean;
   };
 
   try {
@@ -38,6 +39,7 @@ export async function POST(request: Request) {
     const result = await saveTransactionRow(monthKey, Number(body.sheetRow), {
       category: body.category,
       subCategory: body.subCategory,
+      travel: body.travel,
     });
     return NextResponse.json(result, { status: result.ok ? 200 : 400 });
   } catch (e) {
