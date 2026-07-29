@@ -371,19 +371,19 @@ function InboxItem({
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, marginTop: 12 }}>
               <button
                 type="button"
-                className="btn-primary inline"
-                disabled={saving}
-                onClick={() => onSave(row, category, subCategory, travel)}
-              >
-                {saving ? "Saving…" : "Save"}
-              </button>
-              <button
-                type="button"
                 className="btn-secondary"
                 style={{ marginTop: 0, width: "auto" }}
                 onClick={openKwModal}
               >
                 Add Keyword
+              </button>
+              <button
+                type="button"
+                className="btn-primary inline"
+                disabled={saving}
+                onClick={() => onSave(row, category, subCategory, travel)}
+              >
+                {saving ? "Saving…" : "Save"}
               </button>
             </div>
           </div>
