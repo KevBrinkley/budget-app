@@ -239,6 +239,7 @@ function InboxItem({
   const [kwModal, setKwModal] = useState<KwModal | null>(null);
   const [kwSaving, setKwSaving] = useState(false);
   const [kwError, setKwError] = useState("");
+  const [applyToTxn, setApplyToTxn] = useState(false);
   const kwSubs = kwModal?.category ? ref[kwModal.category] || [] : [];
 
   useEffect(() => {
@@ -253,6 +254,7 @@ function InboxItem({
   function openKwModal() {
     setKwModal({ keyword: row.desc, category, subCategory });
     setKwError("");
+    setApplyToTxn(false);
   }
 
   async function saveKeyword() {
@@ -273,8 +275,15 @@ function InboxItem({
       });
       const data = await res.json();
       if (!data.ok) { setKwError(data.error || "Save failed"); return; }
+      const shouldApply = applyToTxn;
+      const applyCat = kwModal.category;
+      const applySub = kwModal.subCategory;
       setKwModal(null);
-      onToast("Keyword saved");
+      if (shouldApply) {
+        onSave(row, applyCat, applySub, travel);
+      } else {
+        onToast("Keyword saved");
+      }
     } catch {
       setKwError("Network error — try again");
     } finally {
@@ -425,6 +434,26 @@ function InboxItem({
                   {kwSubs.map((s) => <option key={s} value={s}>{s}</option>)}
                 </select>
               </div>
+              <label
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 8,
+                  marginTop: 14,
+                  fontSize: 13,
+                  fontWeight: 600,
+                  color: "var(--navy)",
+                  cursor: "pointer",
+                }}
+              >
+                <input
+                  type="checkbox"
+                  checked={applyToTxn}
+                  onChange={(e) => setApplyToTxn(e.target.checked)}
+                  style={{ width: 16, height: 16, accentColor: "var(--blue)", cursor: "pointer" }}
+                />
+                Apply to this transaction?
+              </label>
               {kwError && <p className="kw-modal-error">{kwError}</p>}
             </div>
             <div className="kw-modal-footer">
