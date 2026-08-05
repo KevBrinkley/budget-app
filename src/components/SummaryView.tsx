@@ -12,6 +12,15 @@ function bucketOf(cat: SummaryCategoryRow): "Essentials" | "Want" | null {
   return WANT_CATEGORIES.has(cat.category.toLowerCase()) ? "Want" : "Essentials";
 }
 
+/**
+ * Over/under coloring for budgets: under budget = green, over = red.
+ * The sheet stores overUnder as (spend − budget), so we negate to get
+ * (budget − spend): positive/under → green "$X", negative/over → red "($X)".
+ */
+function overUnderDelta(overUnder: number | null) {
+  return formatDelta(overUnder == null ? null : -overUnder);
+}
+
 export function SummaryView({ data, inboxOpen }: { data: SummaryData; inboxOpen?: number }) {
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
 
@@ -25,6 +34,20 @@ export function SummaryView({ data, inboxOpen }: { data: SummaryData; inboxOpen?
       if (cat.spend != null && cat.spend > max) max = cat.spend;
     }
     return max || 1;
+  }, [data.categories]);
+
+  const bucketTotals = useMemo(() => {
+    const t: Record<string, { spend: number | null; budget: number | null }> = {
+      Essentials: { spend: null, budget: null },
+      Want: { spend: null, budget: null },
+    };
+    for (const cat of data.categories) {
+      const b = bucketOf(cat);
+      if (!b) continue;
+      if (cat.spend != null) t[b].spend = (t[b].spend ?? 0) + cat.spend;
+      if (cat.budget != null) t[b].budget = (t[b].budget ?? 0) + cat.budget;
+    }
+    return t;
   }, [data.categories]);
 
   const kpis = data.kpis;
@@ -84,9 +107,19 @@ export function SummaryView({ data, inboxOpen }: { data: SummaryData; inboxOpen?
                   const bucket = bucketOf(cat);
                   if (bucket && !seenBuckets.has(bucket)) {
                     seenBuckets.add(bucket);
+                    const bt = bucketTotals[bucket];
+                    const bOverUnder =
+                      bt.spend != null && bt.budget != null ? bt.spend - bt.budget : null;
+                    const bd = overUnderDelta(bOverUnder);
                     out.push(
                       <tr key={`bucket-${bucket}`} className="sum-bucket-row">
-                        <td colSpan={5}>{bucket}</td>
+                        <td>{bucket}</td>
+                        <td className="num">{formatMoneyRounded(bt.spend)}</td>
+                        <td className="num">{formatMoneyRounded(bt.budget)}</td>
+                        <td className="num">
+                          <span className={`delta ${bd.cls}`}>{bd.text}</span>
+                        </td>
+                        <td className="num hide-sm" />
                       </tr>,
                     );
                   }
@@ -201,7 +234,7 @@ function CategoryBlock({
         </td>
         <td className="num">—</td>
         <td className="num">
-          <span className={`delta ${formatDelta(cat.overUnder).cls}`}>{formatDelta(cat.overUnder).text}</span>
+          <span className={`delta ${overUnderDelta(cat.overUnder).cls}`}>{overUnderDelta(cat.overUnder).text}</span>
         </td>
         <td className="num hide-sm">—</td>
       </tr>
@@ -235,8 +268,8 @@ function CategoryBlock({
         <td className={`num amt${spendOver ? " amt-over" : ""}`}>{formatMoneyRounded(cat.spend)}</td>
         <td className="num">{formatMoneyRounded(cat.budget)}</td>
         <td className="num">
-          <span className={`delta ${formatDelta(cat.overUnder).cls}`}>
-            {formatDelta(cat.overUnder).text}
+          <span className={`delta ${overUnderDelta(cat.overUnder).cls}`}>
+            {overUnderDelta(cat.overUnder).text}
           </span>
         </td>
         <td className="num hide-sm">
@@ -269,8 +302,8 @@ function CategoryBlock({
             <td className={`num amt${subOver ? " amt-over" : ""}`}>{formatMoneyRounded(sub.spend)}</td>
             <td className="num">{formatMoneyRounded(sub.budget)}</td>
             <td className="num">
-              <span className={`delta ${formatDelta(sub.overUnder).cls}`}>
-                {formatDelta(sub.overUnder).text}
+              <span className={`delta ${overUnderDelta(sub.overUnder).cls}`}>
+                {overUnderDelta(sub.overUnder).text}
               </span>
             </td>
             <td className="num hide-sm">{subPct != null ? `${subPct}%` : "—"}</td>
