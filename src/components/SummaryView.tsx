@@ -1,10 +1,16 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { formatDelta, formatMoneyRounded } from "@/lib/format";
 import { formatMonthLabel } from "@/lib/month";
+import { WANT_CATEGORIES } from "@/lib/constants";
 import type { SummaryCategoryRow, SummaryData } from "@/lib/types";
+
+function bucketOf(cat: SummaryCategoryRow): "Essentials" | "Want" | null {
+  if (cat.isUncategorized) return null;
+  return WANT_CATEGORIES.has(cat.category.toLowerCase()) ? "Want" : "Essentials";
+}
 
 export function SummaryView({ data, inboxOpen }: { data: SummaryData; inboxOpen?: number }) {
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
@@ -71,17 +77,33 @@ export function SummaryView({ data, inboxOpen }: { data: SummaryData; inboxOpen?
               </tr>
             </thead>
             <tbody>
-              {data.categories.map((cat) => (
-                <CategoryBlock
-                  key={cat.id}
-                  cat={cat}
-                  monthKey={data.monthKey}
-                  expanded={Boolean(expanded[cat.id])}
-                  onToggle={() => toggle(cat.id)}
-                  totalSpend={data.totalSpendForPct}
-                  maxSpend={maxSpend}
-                />
-              ))}
+              {(() => {
+                const seenBuckets = new Set<string>();
+                const out: ReactNode[] = [];
+                for (const cat of data.categories) {
+                  const bucket = bucketOf(cat);
+                  if (bucket && !seenBuckets.has(bucket)) {
+                    seenBuckets.add(bucket);
+                    out.push(
+                      <tr key={`bucket-${bucket}`} className="sum-bucket-row">
+                        <td colSpan={5}>{bucket}</td>
+                      </tr>,
+                    );
+                  }
+                  out.push(
+                    <CategoryBlock
+                      key={cat.id}
+                      cat={cat}
+                      monthKey={data.monthKey}
+                      expanded={Boolean(expanded[cat.id])}
+                      onToggle={() => toggle(cat.id)}
+                      totalSpend={data.totalSpendForPct}
+                      maxSpend={maxSpend}
+                    />,
+                  );
+                }
+                return out;
+              })()}
             </tbody>
           </table>
         </div>

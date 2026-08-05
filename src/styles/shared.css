@@ -637,6 +637,17 @@ table.data-table {
   background: var(--blue);
 }
 
+/* Summary — bucket divider rows (Essentials / Want) */
+.summary-table tr.sum-bucket-row td {
+  background: var(--navy);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  padding: 8px 16px;
+}
+
 /* Summary — expandable categories */
 .summary-table .sum-cat-cell {
   display: flex;
