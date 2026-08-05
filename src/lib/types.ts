@@ -15,8 +15,8 @@ export type TransactionRow = {
 export type SummaryKpis = {
   totalSpend: number | null;
   totalBudget: number | null;
-  nmtSpend: number | null;
-  nmtBudget: number | null;
+  wantSpend: number | null;
+  wantBudget: number | null;
   uncategorizedSpend: number | null;
   uncategorizedBudget: number | null;
 };

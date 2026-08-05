@@ -1,5 +1,6 @@
 import { readRangeValues } from "./sheets";
 import { hasTransactionsTab, transactionsTabName } from "./transaction-months";
+import { WANT_CATEGORIES } from "./constants";
 import type { ApiResult, SummaryCategoryRow, SummaryData, SummaryKpis } from "./types";
 
 function cellStr(v: unknown): string {
@@ -43,8 +44,8 @@ export async function getSummaryData(monthKey: string): Promise<ApiResult<Summar
   const kpis: SummaryKpis = {
     totalSpend: null,
     totalBudget: null,
-    nmtSpend: null,
-    nmtBudget: null,
+    wantSpend: null,
+    wantBudget: null,
     uncategorizedSpend: null,
     uncategorizedBudget: null,
   };
@@ -54,9 +55,6 @@ export async function getSummaryData(monthKey: string): Promise<ApiResult<Summar
     if (label === "Total") {
       kpis.totalSpend = cellNum(row[2]);
       kpis.totalBudget = cellNum(row[3]);
-    } else if (label === "NM/T Total") {
-      kpis.nmtSpend = cellNum(row[2]);
-      kpis.nmtBudget = cellNum(row[3]);
     } else if (label === "Uncategorized") {
       kpis.uncategorizedSpend = cellNum(row[2]);
       kpis.uncategorizedBudget = cellNum(row[3]);
@@ -130,6 +128,18 @@ export async function getSummaryData(monthKey: string): Promise<ApiResult<Summar
       isUncategorized: true,
     });
   }
+
+  // Want bucket = sum of Want-category spend/budget from the breakdown.
+  let wantSpend: number | null = null;
+  let wantBudget: number | null = null;
+  for (const c of categories) {
+    if (c.isUncategorized) continue;
+    if (!WANT_CATEGORIES.has(c.category.toLowerCase())) continue;
+    if (c.spend != null) wantSpend = (wantSpend ?? 0) + c.spend;
+    if (c.budget != null) wantBudget = (wantBudget ?? 0) + c.budget;
+  }
+  kpis.wantSpend = wantSpend;
+  kpis.wantBudget = wantBudget;
 
   return {
     ok: true,

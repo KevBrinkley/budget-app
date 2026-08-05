@@ -304,7 +304,7 @@ export function TransactionsTable({
       ) : null}
 
       <div className="content-inner">
-        <div className="kpi-row cols-3">
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
           <div className="kpi-card">
             <div className="kpi-label">Total spend</div>
             <div className="kpi-value">{formatMoneyRounded(kpis.totalSpend)}</div>
@@ -317,26 +317,6 @@ export function TransactionsTable({
                     className={`delta ${formatDelta(kpis.totalSpend - summaryKpis.totalBudget).cls}`}
                   >
                     {formatDelta(kpis.totalSpend - summaryKpis.totalBudget).text}
-                  </span>{" "}
-                  vs budget
-                </>
-              ) : (
-                `${filtered.length} transactions`
-              )}
-            </div>
-          </div>
-          <div className="kpi-card">
-            <div className="kpi-label">NM/T total</div>
-            <div className="kpi-value">{formatMoneyRounded(kpis.nmtSpend)}</div>
-            <div className="kpi-sub">
-              {hasActiveFilters ? (
-                `${filtered.length} transaction${filtered.length === 1 ? "" : "s"}`
-              ) : summaryKpis?.nmtBudget != null ? (
-                <>
-                  <span
-                    className={`delta ${formatDelta(kpis.nmtSpend - summaryKpis.nmtBudget).cls}`}
-                  >
-                    {formatDelta(kpis.nmtSpend - summaryKpis.nmtBudget).text}
                   </span>{" "}
                   vs budget
                 </>

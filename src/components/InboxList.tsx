@@ -97,7 +97,7 @@ export function InboxList({ monthKey, initialRef, initialRows, summaryKpis }: Pr
       ) : null}
 
       <div className="content-inner">
-        <div className="kpi-row cols-3">
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
           <Link className="kpi-card" href={`/transactions?month=${monthKey}`}>
             <div className="kpi-label">Total spend</div>
             <div className="kpi-value">
@@ -110,26 +110,6 @@ export function InboxList({ monthKey, initialRef, initialRows, summaryKpis }: Pr
                     className={`delta ${formatDelta((summaryKpis.totalSpend ?? 0) - summaryKpis.totalBudget).cls}`}
                   >
                     {formatDelta((summaryKpis.totalSpend ?? 0) - summaryKpis.totalBudget).text}
-                  </span>{" "}
-                  vs budget
-                </>
-              ) : (
-                "This month"
-              )}
-            </div>
-          </Link>
-          <Link className="kpi-card" href={`/transactions?month=${monthKey}`}>
-            <div className="kpi-label">NM/T total</div>
-            <div className="kpi-value">
-              {formatMoneyRounded(summaryKpis?.nmtSpend ?? null)}
-            </div>
-            <div className="kpi-sub">
-              {summaryKpis?.nmtBudget != null ? (
-                <>
-                  <span
-                    className={`delta ${formatDelta((summaryKpis.nmtSpend ?? 0) - summaryKpis.nmtBudget).cls}`}
-                  >
-                    {formatDelta((summaryKpis.nmtSpend ?? 0) - summaryKpis.nmtBudget).text}
                   </span>{" "}
                   vs budget
                 </>
@@ -153,6 +133,38 @@ export function InboxList({ monthKey, initialRef, initialRows, summaryKpis }: Pr
             </div>
           </div>
         </div>
+
+        {(() => {
+          const wantSpend = summaryKpis?.wantSpend ?? null;
+          const wantBudget = summaryKpis?.wantBudget ?? null;
+          const overUnder =
+            wantSpend != null && wantBudget != null ? wantBudget - wantSpend : null;
+          return (
+            <div className="kpi-card" style={{ cursor: "default" }}>
+              <div className="kpi-label">Want</div>
+              <div className="kpi-value">
+                {formatMoneyRounded(wantSpend)}
+                {overUnder != null ? (
+                  <span
+                    style={{
+                      marginLeft: 8,
+                      fontSize: 15,
+                      fontWeight: 700,
+                      color: overUnder >= 0 ? "var(--green)" : "var(--red)",
+                    }}
+                  >
+                    (
+                    {overUnder >= 0
+                      ? `$${Math.round(overUnder).toLocaleString("en-US")} under`
+                      : `$${Math.round(Math.abs(overUnder)).toLocaleString("en-US")} over`}
+                    )
+                  </span>
+                ) : null}
+              </div>
+              <div className="kpi-sub">Discretionary spending vs budget</div>
+            </div>
+          );
+        })()}
 
         <div className="section-card txn-filter-card">
           <div className="filter-bar">
