@@ -103,6 +103,24 @@ export function SummaryView({ data, inboxOpen }: { data: SummaryData; inboxOpen?
               {(() => {
                 const seenBuckets = new Set<string>();
                 const out: ReactNode[] = [];
+
+                const totOverUnder =
+                  kpis.totalSpend != null && kpis.totalBudget != null
+                    ? kpis.totalSpend - kpis.totalBudget
+                    : null;
+                const totd = overUnderDelta(totOverUnder);
+                out.push(
+                  <tr key="bucket-total" className="sum-bucket-row sum-total-row">
+                    <td>Total</td>
+                    <td className="num">{formatMoneyRounded(kpis.totalSpend)}</td>
+                    <td className="num">{formatMoneyRounded(kpis.totalBudget)}</td>
+                    <td className="num">
+                      <span className={`delta ${totd.cls}`}>{totd.text}</span>
+                    </td>
+                    <td className="num hide-sm" />
+                  </tr>,
+                );
+
                 for (const cat of data.categories) {
                   const bucket = bucketOf(cat);
                   if (bucket && !seenBuckets.has(bucket)) {
