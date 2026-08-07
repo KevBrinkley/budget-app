@@ -2,7 +2,7 @@ import { getSpreadsheetTimezone } from "./env";
 import { formatMoney } from "./format";
 import { formatShortDate, monthFromDate } from "./month";
 import { getReferenceData, isValidCategoryPair } from "./reference";
-import { readRange, writeRange } from "./sheets";
+import { deleteRow, readRange, writeRange } from "./sheets";
 import { remapLegacyCategorySub } from "./legacy-map";
 import { hasTransactionsTab, transactionsTabName } from "./transaction-months";
 import type { ApiResult, CategoryRef, TransactionRow, TransactionSource } from "./types";
@@ -141,5 +141,39 @@ export async function saveTransactionRow(
   }
 
   await Promise.all(writes);
+  return { ok: true };
+}
+
+/**
+ * Delete a transaction row from the month's Transactions tab.
+ * Guards against index drift by verifying the row's description still matches
+ * what the client saw before removing it.
+ */
+export async function deleteTransactionRow(
+  monthKey: string,
+  sheetRow: number,
+  expectedDesc: string,
+): Promise<ApiResult<object>> {
+  if (!Number.isInteger(sheetRow) || sheetRow < 2) {
+    return { ok: false, error: "Invalid row" };
+  }
+
+  const sheetName = transactionsTabName(monthKey);
+  let current: unknown[][];
+  try {
+    current = await readRange(`'${sheetName}'!D${sheetRow}:D${sheetRow}`);
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : "Could not read row" };
+  }
+
+  const actualDesc = current[0]?.[0] != null ? String(current[0][0]).trim() : "";
+  if (actualDesc !== (expectedDesc ?? "").trim()) {
+    return {
+      ok: false,
+      error: "This row changed since you loaded the page. Refresh and try again.",
+    };
+  }
+
+  await deleteRow(sheetName, sheetRow);
   return { ok: true };
 }

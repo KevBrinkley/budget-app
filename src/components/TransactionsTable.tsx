@@ -40,6 +40,7 @@ export function TransactionsTable({
   const [saving, setSaving] = useState<number | null>(null);
   const [savingAll, setSavingAll] = useState(false);
   const [travelSaving, setTravelSaving] = useState<number | null>(null);
+  const [deleting, setDeleting] = useState<number | null>(null);
   const [unsavedDrafts, setUnsavedDrafts] = useState<
     Map<number, UnsavedDraft | null>
   >(() => new Map());
@@ -225,6 +226,48 @@ export function TransactionsTable({
       showToast("Save failed");
     } finally {
       setSaving(null);
+    }
+  }
+
+  async function deleteTransaction(row: TransactionRow) {
+    const ok = window.confirm(
+      `Delete "${row.desc}" (${row.amt})?\n\nThis permanently removes it from the sheet.`,
+    );
+    if (!ok) return;
+    setDeleting(row.sheetRow);
+    try {
+      const res = await fetch("/api/transactions/delete", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ monthKey, sheetRow: row.sheetRow, desc: row.desc }),
+      });
+      const data = await res.json();
+      if (!data.ok) {
+        showToast(data.error || "Delete failed");
+        return;
+      }
+      // Deleting a sheet row shifts everything below it up by one — mirror that
+      // locally so subsequent edits target the right rows without a refetch.
+      setRows((prev) =>
+        prev
+          .filter((r) => r.sheetRow !== row.sheetRow)
+          .map((r) =>
+            r.sheetRow > row.sheetRow ? { ...r, sheetRow: r.sheetRow - 1 } : r,
+          ),
+      );
+      setUnsavedDrafts((prev) => {
+        const next = new Map<number, UnsavedDraft | null>();
+        for (const [k, v] of prev) {
+          if (k === row.sheetRow) continue;
+          next.set(k > row.sheetRow ? k - 1 : k, v);
+        }
+        return next;
+      });
+      showToast("Deleted");
+    } catch {
+      showToast("Delete failed");
+    } finally {
+      setDeleting(null);
     }
   }
 
@@ -461,8 +504,10 @@ export function TransactionsTable({
                       ref={ref}
                       saving={saving === row.sheetRow}
                       travelSaving={travelSaving === row.sheetRow}
+                      deleting={deleting === row.sheetRow}
                       onSave={saveRow}
                       onSaveTravel={saveTravelRow}
+                      onDelete={deleteTransaction}
                       onUnsavedChange={reportUnsaved}
                     />
                   ))
@@ -485,8 +530,10 @@ function TransactionRowEditor({
   ref,
   saving,
   travelSaving,
+  deleting,
   onSave,
   onSaveTravel,
+  onDelete,
   onUnsavedChange,
 }: {
   row: TransactionRow;
@@ -494,8 +541,10 @@ function TransactionRowEditor({
   ref: CategoryRef;
   saving: boolean;
   travelSaving: boolean;
+  deleting: boolean;
   onSave: (row: TransactionRow, cat: string, sub: string) => void;
   onSaveTravel: (row: TransactionRow, travel: boolean) => Promise<boolean>;
+  onDelete: (row: TransactionRow) => void;
   onUnsavedChange: (sheetRow: number, draft: UnsavedDraft | null | undefined) => void;
 }) {
   const [category, setCategory] = useState(row.category);
@@ -590,16 +639,28 @@ function TransactionRowEditor({
         <SourceBadge source={row.source} />
       </td>
       <td className="txn-actions-cell">
-        {showSave ? (
+        <div className="txn-actions">
+          {showSave ? (
+            <button
+              type="button"
+              className="txn-save-btn"
+              disabled={saving || !canSave}
+              onClick={() => onSave(row, category, subCategory)}
+            >
+              {saving ? "…" : "Save"}
+            </button>
+          ) : null}
           <button
             type="button"
-            className="txn-save-btn"
-            disabled={saving || !canSave}
-            onClick={() => onSave(row, category, subCategory)}
+            className="txn-delete-btn"
+            disabled={deleting}
+            aria-label={`Delete ${row.desc}`}
+            title="Delete transaction"
+            onClick={() => onDelete(row)}
           >
-            {saving ? "…" : "Save"}
+            {deleting ? "…" : "Delete"}
           </button>
-        ) : null}
+        </div>
       </td>
     </tr>
   );

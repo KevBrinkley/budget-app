@@ -62,3 +62,38 @@ export async function writeRange(range: string, values: unknown[][]) {
     requestBody: { values },
   });
 }
+
+/** Resolve a tab title to its numeric sheetId (needed for structural edits). */
+export async function getSheetIdByName(title: string): Promise<number | null> {
+  const sheets = getSheetsClient();
+  const res = await sheets.spreadsheets.get({
+    spreadsheetId: getSpreadsheetId(),
+    fields: "sheets.properties(sheetId,title)",
+  });
+  const match = (res.data.sheets || []).find((s) => s.properties?.title === title);
+  return match?.properties?.sheetId ?? null;
+}
+
+/** Delete a single 1-based row from a tab (shifts rows below up by one). */
+export async function deleteRow(sheetName: string, rowNumber: number) {
+  const sheetId = await getSheetIdByName(sheetName);
+  if (sheetId == null) throw new Error(`Tab "${sheetName}" not found`);
+  const sheets = getSheetsClient();
+  await sheets.spreadsheets.batchUpdate({
+    spreadsheetId: getSpreadsheetId(),
+    requestBody: {
+      requests: [
+        {
+          deleteDimension: {
+            range: {
+              sheetId,
+              dimension: "ROWS",
+              startIndex: rowNumber - 1, // 0-based, inclusive
+              endIndex: rowNumber, // exclusive
+            },
+          },
+        },
+      ],
+    },
+  });
+}
