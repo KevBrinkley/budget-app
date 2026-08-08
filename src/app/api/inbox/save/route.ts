@@ -17,6 +17,7 @@ export async function POST(request: Request) {
     category?: string;
     subCategory?: string;
     travel?: boolean;
+    amount?: number;
   };
 
   try {
@@ -40,6 +41,7 @@ export async function POST(request: Request) {
       category: body.category,
       subCategory: body.subCategory,
       travel: body.travel,
+      amount: body.amount,
     });
     return NextResponse.json(result, { status: result.ok ? 200 : 400 });
   } catch (e) {

@@ -1,7 +1,50 @@
-import { readRangeValues } from "./sheets";
+import { batchGetRanges, getSpreadsheetMeta, readRangeValues } from "./sheets";
 import { hasTransactionsTab, transactionsTabName } from "./transaction-months";
 import { WANT_CATEGORIES } from "./constants";
 import type { ApiResult, SummaryCategoryRow, SummaryData, SummaryKpis } from "./types";
+
+/**
+ * Total spend in the "Travel" category (all sub-categories) across every
+ * Transactions tab for the given year — independent of the viewed month.
+ * Sums column F (debit) where column H (category) === "Travel".
+ */
+export async function getTravelYearTotal(year: string): Promise<number | null> {
+  let titles: string[];
+  try {
+    const meta = await getSpreadsheetMeta();
+    titles = (meta.sheets || [])
+      .map((s) => s.properties?.title)
+      .filter((t): t is string => Boolean(t));
+  } catch {
+    return null;
+  }
+
+  const monthTabs: string[] = [];
+  for (let m = 1; m <= 12; m++) {
+    const name = `${year}-${String(m).padStart(2, "0")} Transactions`;
+    if (titles.includes(name)) monthTabs.push(name);
+  }
+  if (monthTabs.length === 0) return null;
+
+  let perTab: unknown[][][];
+  try {
+    perTab = await batchGetRanges(monthTabs.map((t) => `'${t}'!F2:H`));
+  } catch {
+    return null;
+  }
+
+  let total = 0;
+  for (const rows of perTab) {
+    for (const row of rows) {
+      const debit = row[0]; // F
+      const category = row[2]; // H
+      if (category == null || String(category).trim() !== "Travel") continue;
+      const num = typeof debit === "number" ? debit : Number(debit);
+      if (Number.isFinite(num)) total += num;
+    }
+  }
+  return total;
+}
 
 function cellStr(v: unknown): string {
   if (v == null) return "";
@@ -141,11 +184,14 @@ export async function getSummaryData(monthKey: string): Promise<ApiResult<Summar
   kpis.wantSpend = wantSpend;
   kpis.wantBudget = wantBudget;
 
+  const travelYearTotal = await getTravelYearTotal(monthKey.slice(0, 4));
+
   return {
     ok: true,
     monthKey,
     kpis,
     categories: categories.filter((c) => !c.label.endsWith("-Total")),
     totalSpendForPct,
+    travelYearTotal,
   };
 }

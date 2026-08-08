@@ -81,7 +81,14 @@ export function SummaryView({ data, inboxOpen }: { data: SummaryData; inboxOpen?
         </Link>
       </div>
 
-      <WantCard kpis={kpis} />
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+        <WantCard kpis={kpis} />
+        <div className="kpi-card" style={{ cursor: "default" }}>
+          <div className="kpi-label">Travel · {data.monthKey.slice(0, 4)}</div>
+          <div className="kpi-value">{formatMoneyRounded(data.travelYearTotal)}</div>
+          <div className="kpi-sub">Spent this year (all months)</div>
+        </div>
+      </div>
 
       <div className="section-card">
         <div className="section-header">

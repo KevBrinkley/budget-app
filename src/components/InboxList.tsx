@@ -18,6 +18,8 @@ export function InboxList({ monthKey, initialRef, initialRows, summaryKpis }: Pr
   const [openRow, setOpenRow] = useState<number | null>(null);
   const [search, setSearch] = useState("");
   const [saving, setSaving] = useState<number | null>(null);
+  const [deleting, setDeleting] = useState<number | null>(null);
+  const [savingAmount, setSavingAmount] = useState<number | null>(null);
   const [toast, setToast] = useState("");
 
   useEffect(() => {
@@ -71,6 +73,73 @@ export function InboxList({ monthKey, initialRef, initialRows, summaryKpis }: Pr
       showToast("Save failed");
     } finally {
       setSaving(null);
+    }
+  }
+
+  function shiftAfterDelete(deletedRow: number) {
+    setRows((prev) =>
+      prev
+        .filter((r) => r.sheetRow !== deletedRow)
+        .map((r) => (r.sheetRow > deletedRow ? { ...r, sheetRow: r.sheetRow - 1 } : r)),
+    );
+  }
+
+  async function deleteRow(row: InboxRow) {
+    const ok = window.confirm(
+      `Delete "${row.desc}" (${row.amt})?\n\nThis permanently removes it from the sheet.`,
+    );
+    if (!ok) return;
+    setDeleting(row.sheetRow);
+    try {
+      const res = await fetch("/api/transactions/delete", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ monthKey, sheetRow: row.sheetRow, desc: row.desc }),
+      });
+      const data = await res.json();
+      if (!data.ok) {
+        showToast(data.error || "Delete failed");
+        return;
+      }
+      shiftAfterDelete(row.sheetRow);
+      setOpenRow(null);
+      showToast("Deleted");
+    } catch {
+      showToast("Delete failed");
+    } finally {
+      setDeleting(null);
+    }
+  }
+
+  async function saveAmount(row: InboxRow, amount: number) {
+    if (!Number.isFinite(amount) || amount < 0) {
+      showToast("Enter a valid amount");
+      return;
+    }
+    setSavingAmount(row.sheetRow);
+    try {
+      const res = await fetch("/api/inbox/save", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ monthKey, sheetRow: row.sheetRow, amount }),
+      });
+      const data = await res.json();
+      if (!data.ok) {
+        showToast(data.error || "Save failed");
+        return;
+      }
+      setRows((prev) =>
+        prev.map((r) =>
+          r.sheetRow === row.sheetRow
+            ? { ...r, amount, amt: `$${amount.toFixed(2)}` }
+            : r,
+        ),
+      );
+      showToast("Amount updated");
+    } catch {
+      showToast("Save failed");
+    } finally {
+      setSavingAmount(null);
     }
   }
 
@@ -204,10 +273,14 @@ export function InboxList({ monthKey, initialRef, initialRows, summaryKpis }: Pr
                 categories={categories}
                 open={openRow === row.sheetRow}
                 saving={saving === row.sheetRow}
+                deleting={deleting === row.sheetRow}
+                savingAmount={savingAmount === row.sheetRow}
                 onToggle={() =>
                   setOpenRow((cur) => (cur === row.sheetRow ? null : row.sheetRow))
                 }
                 onSave={(r, cat, sub, travel) => saveRow(r, cat, sub, travel)}
+                onDelete={deleteRow}
+                onSaveAmount={saveAmount}
                 onToast={showToast}
               />
             ))}
@@ -230,8 +303,12 @@ function InboxItem({
   categories,
   open,
   saving,
+  deleting,
+  savingAmount,
   onToggle,
   onSave,
+  onDelete,
+  onSaveAmount,
   onToast,
 }: {
   row: InboxRow;
@@ -239,14 +316,25 @@ function InboxItem({
   categories: string[];
   open: boolean;
   saving: boolean;
+  deleting: boolean;
+  savingAmount: boolean;
   onToggle: () => void;
   onSave: (row: InboxRow, cat: string, sub: string, travel: boolean) => void;
+  onDelete: (row: InboxRow) => void;
+  onSaveAmount: (row: InboxRow, amount: number) => void;
   onToast: (msg: string) => void;
 }) {
   const [category, setCategory] = useState("");
   const [subCategory, setSubCategory] = useState("");
   const [travel, setTravel] = useState(false);
+  const [amountDraft, setAmountDraft] = useState(String(row.amount));
   const subs = category ? ref[category] || [] : [];
+
+  useEffect(() => {
+    setAmountDraft(String(row.amount));
+  }, [row.amount, row.sheetRow]);
+
+  const amountChanged = amountDraft.trim() !== String(row.amount);
 
   const [kwModal, setKwModal] = useState<KwModal | null>(null);
   const [kwSaving, setKwSaving] = useState(false);
@@ -329,6 +417,30 @@ function InboxItem({
         {open ? (
           <div className="acc-panel">
             <div className="field">
+              <label>Amount</label>
+              <div style={{ display: "flex", gap: 8 }}>
+                <input
+                  type="number"
+                  inputMode="decimal"
+                  step="0.01"
+                  min="0"
+                  value={amountDraft}
+                  onChange={(e) => setAmountDraft(e.target.value)}
+                  style={{ flex: 1, minWidth: 0 }}
+                  aria-label={`Amount for ${row.desc}`}
+                />
+                <button
+                  type="button"
+                  className="btn-secondary"
+                  style={{ marginTop: 0, width: "auto" }}
+                  disabled={!amountChanged || savingAmount}
+                  onClick={() => onSaveAmount(row, Number(amountDraft))}
+                >
+                  {savingAmount ? "…" : "Update"}
+                </button>
+              </div>
+            </div>
+            <div className="field">
               <label>Category</label>
               <select
                 value={category}
@@ -398,6 +510,25 @@ function InboxItem({
                 {saving ? "Saving…" : "Save"}
               </button>
             </div>
+            <button
+              type="button"
+              onClick={() => onDelete(row)}
+              disabled={deleting}
+              style={{
+                marginTop: 14,
+                background: "none",
+                border: "none",
+                color: "var(--red)",
+                fontWeight: 600,
+                fontSize: 13,
+                cursor: "pointer",
+                padding: 0,
+                textDecoration: "underline",
+                textUnderlineOffset: 2,
+              }}
+            >
+              {deleting ? "Deleting…" : "Delete transaction"}
+            </button>
           </div>
         ) : null}
       </article>

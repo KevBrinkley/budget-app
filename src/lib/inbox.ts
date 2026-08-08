@@ -56,6 +56,7 @@ export async function getInboxData(monthKey: string): Promise<
     rows.push({
       sheetRow: i + 2,
       amt: formatMoney(debitNum),
+      amount: debitNum,
       date: formatShortDate(posted, tz),
       desc,
     });

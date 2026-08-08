@@ -42,6 +42,18 @@ export async function readRange(range: string): Promise<unknown[][]> {
   return (res.data.values as unknown[][]) || [];
 }
 
+/** Read several ranges in one request. Returns values per range (same order). */
+export async function batchGetRanges(ranges: string[]): Promise<unknown[][][]> {
+  if (ranges.length === 0) return [];
+  const sheets = getSheetsClient();
+  const res = await sheets.spreadsheets.values.batchGet({
+    spreadsheetId: getSpreadsheetId(),
+    ranges,
+    valueRenderOption: "UNFORMATTED_VALUE",
+  });
+  return (res.data.valueRanges || []).map((vr) => (vr.values as unknown[][]) || []);
+}
+
 /** Read computed values (not formulas) from the sheet. */
 export async function readRangeValues(range: string): Promise<unknown[][]> {
   const sheets = getSheetsClient();

@@ -101,6 +101,7 @@ export async function saveTransactionRow(
     category?: string;
     subCategory?: string;
     travel?: boolean;
+    amount?: number;
   },
 ): Promise<ApiResult<object>> {
   if (!Number.isInteger(sheetRow) || sheetRow < 2) {
@@ -111,6 +112,15 @@ export async function saveTransactionRow(
   const cat = (opts.category ?? "").trim();
   const sub = (opts.subCategory ?? "").trim();
   const writes: Promise<void>[] = [];
+
+  if (opts.amount !== undefined) {
+    if (!Number.isFinite(opts.amount) || opts.amount < 0) {
+      return { ok: false, error: "Enter a valid amount" };
+    }
+    writes.push(
+      writeRange(`'${sheetName}'!F${sheetRow}`, [[opts.amount]]).then(() => undefined),
+    );
+  }
 
   if (cat || sub) {
     if (!cat || !sub) {
