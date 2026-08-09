@@ -41,6 +41,7 @@ export function TransactionsTable({
   const [savingAll, setSavingAll] = useState(false);
   const [travelSaving, setTravelSaving] = useState<number | null>(null);
   const [deleting, setDeleting] = useState<number | null>(null);
+  const [savingAmount, setSavingAmount] = useState<number | null>(null);
   const [unsavedDrafts, setUnsavedDrafts] = useState<
     Map<number, UnsavedDraft | null>
   >(() => new Map());
@@ -226,6 +227,38 @@ export function TransactionsTable({
       showToast("Save failed");
     } finally {
       setSaving(null);
+    }
+  }
+
+  async function saveAmount(row: TransactionRow, amount: number) {
+    if (!Number.isFinite(amount) || amount < 0) {
+      showToast("Enter a valid amount");
+      return;
+    }
+    setSavingAmount(row.sheetRow);
+    try {
+      const res = await fetch("/api/transactions/save", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ monthKey, sheetRow: row.sheetRow, amount }),
+      });
+      const data = await res.json();
+      if (!data.ok) {
+        showToast(data.error || "Save failed");
+        return;
+      }
+      setRows((prev) =>
+        prev.map((r) =>
+          r.sheetRow === row.sheetRow
+            ? { ...r, amount, amt: `$${amount.toFixed(2)}` }
+            : r,
+        ),
+      );
+      showToast("Amount updated");
+    } catch {
+      showToast("Save failed");
+    } finally {
+      setSavingAmount(null);
     }
   }
 
@@ -505,9 +538,11 @@ export function TransactionsTable({
                       saving={saving === row.sheetRow}
                       travelSaving={travelSaving === row.sheetRow}
                       deleting={deleting === row.sheetRow}
+                      savingAmount={savingAmount === row.sheetRow}
                       onSave={saveRow}
                       onSaveTravel={saveTravelRow}
                       onDelete={deleteTransaction}
+                      onSaveAmount={saveAmount}
                       onUnsavedChange={reportUnsaved}
                     />
                   ))
@@ -531,9 +566,11 @@ function TransactionRowEditor({
   saving,
   travelSaving,
   deleting,
+  savingAmount,
   onSave,
   onSaveTravel,
   onDelete,
+  onSaveAmount,
   onUnsavedChange,
 }: {
   row: TransactionRow;
@@ -542,24 +579,29 @@ function TransactionRowEditor({
   saving: boolean;
   travelSaving: boolean;
   deleting: boolean;
+  savingAmount: boolean;
   onSave: (row: TransactionRow, cat: string, sub: string) => void;
   onSaveTravel: (row: TransactionRow, travel: boolean) => Promise<boolean>;
   onDelete: (row: TransactionRow) => void;
+  onSaveAmount: (row: TransactionRow, amount: number) => void;
   onUnsavedChange: (sheetRow: number, draft: UnsavedDraft | null | undefined) => void;
 }) {
   const [category, setCategory] = useState(row.category);
   const [subCategory, setSubCategory] = useState(row.subCategory);
   const [travel, setTravel] = useState(row.travel);
+  const [amountDraft, setAmountDraft] = useState(String(row.amount));
   const subs = category ? ref[category] || [] : [];
   const catChanged = category !== row.category || subCategory !== row.subCategory;
   const canSave = Boolean(category && subCategory && catChanged);
   const showSave = Boolean(category || subCategory) && catChanged;
+  const amountChanged = amountDraft.trim() !== String(row.amount);
 
   useEffect(() => {
     setCategory(row.category);
     setSubCategory(row.subCategory);
     setTravel(row.travel);
-  }, [row.category, row.subCategory, row.travel, row.sheetRow]);
+    setAmountDraft(String(row.amount));
+  }, [row.category, row.subCategory, row.travel, row.amount, row.sheetRow]);
 
   useEffect(() => {
     if (!catChanged) {
@@ -586,7 +628,29 @@ function TransactionRowEditor({
         <div className="txn-desc-row">
           <div className="txn-desc-main">
             <span className="txn-desc-text">{row.desc}</span>
-            <span className="txn-amt">{row.amt}</span>
+            <div className="txn-amt-edit">
+              <span className="txn-amt-prefix">$</span>
+              <input
+                className="txn-amt-input"
+                type="number"
+                inputMode="decimal"
+                step="0.01"
+                min="0"
+                value={amountDraft}
+                onChange={(e) => setAmountDraft(e.target.value)}
+                aria-label={`Amount for ${row.desc}`}
+              />
+              {amountChanged ? (
+                <button
+                  type="button"
+                  className="txn-amt-save"
+                  disabled={savingAmount}
+                  onClick={() => onSaveAmount(row, Number(amountDraft))}
+                >
+                  {savingAmount ? "…" : "Update"}
+                </button>
+              ) : null}
+            </div>
           </div>
         </div>
       </td>
