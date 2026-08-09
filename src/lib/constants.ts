@@ -15,10 +15,12 @@ export const WANT_CATEGORIES = new Set(
     "Subscriptions",
     "Learning",
     "Things",
-    "Travel",
     "Other",
     // legacy aliases
     "Want",
     "Fees/Other",
   ].map((s) => s.toLowerCase()),
 );
+
+/** Category tracked on its own, excluded from the Want bucket and monthly totals. */
+export const TRAVEL_CATEGORY = "travel";

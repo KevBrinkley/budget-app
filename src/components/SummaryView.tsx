@@ -4,12 +4,17 @@ import { useMemo, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { formatDelta, formatMoneyRounded } from "@/lib/format";
 import { formatMonthLabel } from "@/lib/month";
-import { WANT_CATEGORIES } from "@/lib/constants";
+import { TRAVEL_CATEGORY, WANT_CATEGORIES } from "@/lib/constants";
 import type { SummaryCategoryRow, SummaryData } from "@/lib/types";
 
-function bucketOf(cat: SummaryCategoryRow): "Essentials" | "Want" | null {
+type Bucket = "Essentials" | "Want" | "Travel";
+const BUCKET_ORDER: Bucket[] = ["Essentials", "Want", "Travel"];
+
+function bucketOf(cat: SummaryCategoryRow): Bucket | null {
   if (cat.isUncategorized) return null;
-  return WANT_CATEGORIES.has(cat.category.toLowerCase()) ? "Want" : "Essentials";
+  const name = cat.category.toLowerCase();
+  if (name === TRAVEL_CATEGORY) return "Travel";
+  return WANT_CATEGORIES.has(name) ? "Want" : "Essentials";
 }
 
 /**
@@ -37,9 +42,10 @@ export function SummaryView({ data, inboxOpen }: { data: SummaryData; inboxOpen?
   }, [data.categories]);
 
   const bucketTotals = useMemo(() => {
-    const t: Record<string, { spend: number | null; budget: number | null }> = {
+    const t: Record<Bucket, { spend: number | null; budget: number | null }> = {
       Essentials: { spend: null, budget: null },
       Want: { spend: null, budget: null },
+      Travel: { spend: null, budget: null },
     };
     for (const cat of data.categories) {
       const b = bucketOf(cat);
@@ -113,9 +119,21 @@ export function SummaryView({ data, inboxOpen }: { data: SummaryData; inboxOpen?
             </thead>
             <tbody>
               {(() => {
-                const seenBuckets = new Set<string>();
                 const out: ReactNode[] = [];
 
+                const renderCat = (cat: SummaryCategoryRow) => (
+                  <CategoryBlock
+                    key={cat.id}
+                    cat={cat}
+                    monthKey={data.monthKey}
+                    expanded={Boolean(expanded[cat.id])}
+                    onToggle={() => toggle(cat.id)}
+                    totalSpend={data.totalSpendForPct}
+                    maxSpend={maxSpend}
+                  />
+                );
+
+                // Grand total excludes Travel (tracked separately).
                 const totOverUnder =
                   kpis.totalSpend != null && kpis.totalBudget != null
                     ? kpis.totalSpend - kpis.totalBudget
@@ -123,7 +141,7 @@ export function SummaryView({ data, inboxOpen }: { data: SummaryData; inboxOpen?
                 const totd = overUnderDelta(totOverUnder);
                 out.push(
                   <tr key="bucket-total" className="sum-bucket-row sum-total-row">
-                    <td>Total</td>
+                    <td>Total · excl. Travel</td>
                     <td className="num">{formatMoneyRounded(kpis.totalSpend)}</td>
                     <td className="num">{formatMoneyRounded(kpis.totalBudget)}</td>
                     <td className="num">
@@ -133,38 +151,41 @@ export function SummaryView({ data, inboxOpen }: { data: SummaryData; inboxOpen?
                   </tr>,
                 );
 
+                // Group categories by bucket, then render in a fixed order so
+                // Travel stays its own section regardless of Reference ordering.
+                const grouped: Record<Bucket, SummaryCategoryRow[]> = {
+                  Essentials: [],
+                  Want: [],
+                  Travel: [],
+                };
+                const uncategorized: SummaryCategoryRow[] = [];
                 for (const cat of data.categories) {
-                  const bucket = bucketOf(cat);
-                  if (bucket && !seenBuckets.has(bucket)) {
-                    seenBuckets.add(bucket);
-                    const bt = bucketTotals[bucket];
-                    const bOverUnder =
-                      bt.spend != null && bt.budget != null ? bt.spend - bt.budget : null;
-                    const bd = overUnderDelta(bOverUnder);
-                    out.push(
-                      <tr key={`bucket-${bucket}`} className="sum-bucket-row">
-                        <td>{bucket}</td>
-                        <td className="num">{formatMoneyRounded(bt.spend)}</td>
-                        <td className="num">{formatMoneyRounded(bt.budget)}</td>
-                        <td className="num">
-                          <span className={`delta ${bd.cls}`}>{bd.text}</span>
-                        </td>
-                        <td className="num hide-sm" />
-                      </tr>,
-                    );
-                  }
-                  out.push(
-                    <CategoryBlock
-                      key={cat.id}
-                      cat={cat}
-                      monthKey={data.monthKey}
-                      expanded={Boolean(expanded[cat.id])}
-                      onToggle={() => toggle(cat.id)}
-                      totalSpend={data.totalSpendForPct}
-                      maxSpend={maxSpend}
-                    />,
-                  );
+                  const b = bucketOf(cat);
+                  if (b) grouped[b].push(cat);
+                  else uncategorized.push(cat);
                 }
+
+                for (const bucket of BUCKET_ORDER) {
+                  const cats = grouped[bucket];
+                  if (cats.length === 0) continue;
+                  const bt = bucketTotals[bucket];
+                  const bOverUnder =
+                    bt.spend != null && bt.budget != null ? bt.spend - bt.budget : null;
+                  const bd = overUnderDelta(bOverUnder);
+                  out.push(
+                    <tr key={`bucket-${bucket}`} className="sum-bucket-row">
+                      <td>{bucket}</td>
+                      <td className="num">{formatMoneyRounded(bt.spend)}</td>
+                      <td className="num">{formatMoneyRounded(bt.budget)}</td>
+                      <td className="num">
+                        <span className={`delta ${bd.cls}`}>{bd.text}</span>
+                      </td>
+                      <td className="num hide-sm" />
+                    </tr>,
+                  );
+                  for (const cat of cats) out.push(renderCat(cat));
+                }
+                for (const cat of uncategorized) out.push(renderCat(cat));
                 return out;
               })()}
             </tbody>
