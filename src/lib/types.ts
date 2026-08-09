@@ -39,8 +39,6 @@ export type SummaryData = {
   kpis: SummaryKpis;
   categories: SummaryCategoryRow[];
   totalSpendForPct: number;
-  /** Total Travel-category spend across the whole year (all month tabs). */
-  travelYearTotal: number | null;
 };
 
 export type CategoryRef = Record<string, string[]>;
