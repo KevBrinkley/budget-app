@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { formatDelta, formatMoneyRounded } from "@/lib/format";
+import { CategoryPicker, CategoryPickerTrigger } from "./CategoryPicker";
 import type { CategoryRef, InboxRow, SummaryKpis } from "@/lib/types";
 
 type Props = {
@@ -326,13 +327,14 @@ function InboxItem({
 }) {
   const [category, setCategory] = useState("");
   const [subCategory, setSubCategory] = useState("");
+  const [pickerOpen, setPickerOpen] = useState(false);
   const [travel, setTravel] = useState(false);
   const [amountDraft, setAmountDraft] = useState(String(row.amount));
-  const subs = category ? ref[category] || [] : [];
 
   useEffect(() => {
     setAmountDraft(String(row.amount));
   }, [row.amount, row.sheetRow]);
+
 
   const amountChanged = amountDraft.trim() !== String(row.amount);
 
@@ -398,7 +400,11 @@ function InboxItem({
           type="button"
           className="acc-head"
           aria-expanded={open}
-          onClick={onToggle}
+          onClick={() => {
+            // Collapsing hides the trigger — don't leave its picker floating.
+            setPickerOpen(false);
+            onToggle();
+          }}
         >
           <div className="tx-top">
             <span className="tx-desc">{row.amt}</span>
@@ -442,35 +448,11 @@ function InboxItem({
             </div>
             <div className="field">
               <label>Category</label>
-              <select
-                value={category}
-                onChange={(e) => {
-                  setCategory(e.target.value);
-                  setSubCategory("");
-                }}
-              >
-                <option value="">Choose…</option>
-                {categories.map((c) => (
-                  <option key={c} value={c}>
-                    {c}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className="field">
-              <label>Sub-category</label>
-              <select
-                value={subCategory}
-                onChange={(e) => setSubCategory(e.target.value)}
-                disabled={!category}
-              >
-                <option value="">Choose…</option>
-                {subs.map((s) => (
-                  <option key={s} value={s}>
-                    {s}
-                  </option>
-                ))}
-              </select>
+              <CategoryPickerTrigger
+                category={category}
+                subCategory={subCategory}
+                onOpen={() => setPickerOpen(true)}
+              />
             </div>
             <label
               style={{
@@ -532,6 +514,20 @@ function InboxItem({
           </div>
         ) : null}
       </article>
+
+      {open && pickerOpen ? (
+        <CategoryPicker
+          categoryRef={ref}
+          category={category}
+          subCategory={subCategory}
+          onSelect={(cat, sub) => {
+            setCategory(cat);
+            setSubCategory(sub);
+            setPickerOpen(false);
+          }}
+          onClose={() => setPickerOpen(false)}
+        />
+      ) : null}
 
       {kwModal ? (
         <div className="kw-modal-backdrop" onClick={() => !kwSaving && setKwModal(null)}>
