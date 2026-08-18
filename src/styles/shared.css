@@ -1940,11 +1940,11 @@ table.data-table {
   padding: 8px 16px;
   background: var(--bg);
   border-bottom: 1px solid var(--border);
-  font-size: 11px;
+  font-size: 14px;
   font-weight: 700;
-  color: var(--gray-5);
+  color: var(--navy);
   text-transform: uppercase;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.03em;
 }
 .cat-picker-sub {
   display: flex;
@@ -1953,7 +1953,7 @@ table.data-table {
   gap: 8px;
   width: 100%;
   min-height: 44px;
-  padding: 0 16px;
+  padding: 0 16px 0 32px;
   border: none;
   border-bottom: 1px solid var(--gray-2);
   background: var(--surface);
