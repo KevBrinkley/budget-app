@@ -6,7 +6,7 @@ import { InboxList } from "@/components/InboxList";
 import { MonthPicker } from "@/components/MonthPicker";
 import { SetupBanner } from "@/components/SetupBanner";
 import { useBudgetMonth } from "@/hooks/useBudgetMonth";
-import type { CategoryRef, InboxRow, SummaryKpis } from "@/lib/types";
+import type { CategoryRef, InboxRow, ReconciledMatch, SummaryKpis } from "@/lib/types";
 
 function InboxPageInner() {
   const { monthKey, setMonthKey, urlSynced } = useBudgetMonth();
@@ -14,6 +14,7 @@ function InboxPageInner() {
   const [ref, setRef] = useState<CategoryRef>({});
   const [rows, setRows] = useState<InboxRow[]>([]);
   const [summaryKpis, setSummaryKpis] = useState<SummaryKpis | null>(null);
+  const [matched, setMatched] = useState<ReconciledMatch[]>([]);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
 
@@ -32,12 +33,14 @@ function InboxPageInner() {
         setRef({});
         setRows([]);
         setSummaryKpis(null);
+        setMatched([]);
         if (data.monthKey && data.monthKey !== monthKey) setMonthKey(data.monthKey);
         return;
       }
       if (data.monthKey && data.monthKey !== monthKey) setMonthKey(data.monthKey);
       setRef(data.ref || {});
       setRows(data.rows || []);
+      setMatched(data.matched || []);
       setSummaryKpis(sumData.ok ? sumData.kpis ?? null : null);
       setError(data.notice || "");
     } catch {
@@ -92,6 +95,8 @@ function InboxPageInner() {
           initialRef={ref}
           initialRows={rows}
           summaryKpis={summaryKpis}
+          matched={matched}
+          onReload={load}
         />
       ) : (
         <div className="content-inner">

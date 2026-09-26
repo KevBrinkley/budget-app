@@ -1979,3 +1979,70 @@ table.data-table {
   color: var(--blue);
   font-weight: 700;
 }
+
+/* ---- Manual transactions + duplicate-amount warning (inbox) ---- */
+.add-txn-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 44px;
+  margin-top: 12px;
+  border: 1px dashed var(--gray-3);
+  border-radius: var(--radius);
+  background: var(--surface);
+  font-family: var(--font);
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--blue);
+  cursor: pointer;
+}
+.add-txn-btn:hover {
+  border-color: var(--blue);
+  background: #f5f9ff;
+}
+.add-txn-btn:focus-visible {
+  outline: none;
+  border-color: var(--blue);
+  box-shadow: 0 0 0 1px var(--blue);
+}
+.add-txn-plus {
+  font-size: 18px;
+  line-height: 1;
+  font-weight: 400;
+}
+
+.badge-manual {
+  background: #eef4ff;
+  color: var(--navy);
+}
+.badge-dupe {
+  background: #fdf0e6;
+  color: #8a4b08;
+  font-weight: 700;
+}
+
+.matched-banner {
+  margin-top: 12px;
+  padding: 10px 12px;
+  border: 1px solid #b7e0c4;
+  border-left: 3px solid var(--green);
+  border-radius: var(--radius);
+  background: #f1f9f3;
+  font-size: 13px;
+  color: var(--text);
+}
+.matched-banner strong {
+  color: var(--green);
+  font-size: 13px;
+}
+.matched-banner ul {
+  margin: 6px 0 0;
+  padding-left: 16px;
+}
+.matched-banner li {
+  font-size: 12px;
+  color: var(--gray-5);
+  line-height: 1.5;
+}

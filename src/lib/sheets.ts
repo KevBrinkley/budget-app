@@ -63,15 +63,31 @@ export async function writeRange(range: string, values: unknown[][]) {
   });
 }
 
+/**
+ * Tab title → numeric sheetId. Cached for the life of the process: ids are
+ * stable for a given tab, and without this every structural edit pays for a
+ * full spreadsheet metadata fetch (which adds up fast against the Sheets
+ * per-minute quota when several rows are reconciled at once).
+ */
+const sheetIdCache = new Map<string, number>();
+
 /** Resolve a tab title to its numeric sheetId (needed for structural edits). */
 export async function getSheetIdByName(title: string): Promise<number | null> {
+  const cached = sheetIdCache.get(title);
+  if (cached != null) return cached;
+
   const sheets = getSheetsClient();
   const res = await sheets.spreadsheets.get({
     spreadsheetId: getSpreadsheetId(),
     fields: "sheets.properties(sheetId,title)",
   });
-  const match = (res.data.sheets || []).find((s) => s.properties?.title === title);
-  return match?.properties?.sheetId ?? null;
+  // Cache every tab we just paid to look up, not only the one asked for.
+  for (const sheet of res.data.sheets || []) {
+    const name = sheet.properties?.title;
+    const id = sheet.properties?.sheetId;
+    if (name && id != null) sheetIdCache.set(name, id);
+  }
+  return sheetIdCache.get(title) ?? null;
 }
 
 /** Delete a single 1-based row from a tab (shifts rows below up by one). */
@@ -96,4 +112,39 @@ export async function deleteRow(sheetName: string, rowNumber: number) {
       ],
     },
   });
+}
+
+/**
+ * Insert a blank row at a 1-based position (shifts existing rows down by one),
+ * then write `values` into it. Used to put manually-added transactions at the
+ * top of the month's tab instead of appending them below the imported rows.
+ */
+export async function insertRowAt(
+  sheetName: string,
+  rowNumber: number,
+  values: unknown[],
+) {
+  const sheetId = await getSheetIdByName(sheetName);
+  if (sheetId == null) throw new Error(`Tab "${sheetName}" not found`);
+  const sheets = getSheetsClient();
+  await sheets.spreadsheets.batchUpdate({
+    spreadsheetId: getSpreadsheetId(),
+    requestBody: {
+      requests: [
+        {
+          insertDimension: {
+            range: {
+              sheetId,
+              dimension: "ROWS",
+              startIndex: rowNumber - 1, // 0-based, inclusive
+              endIndex: rowNumber, // exclusive
+            },
+            inheritFromBefore: false,
+          },
+        },
+      ],
+    },
+  });
+  const endCol = String.fromCharCode("A".charCodeAt(0) + values.length - 1);
+  await writeRange(`'${sheetName}'!A${rowNumber}:${endCol}${rowNumber}`, [values]);
 }

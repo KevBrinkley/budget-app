@@ -4,16 +4,28 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { formatDelta, formatMoneyRounded } from "@/lib/format";
 import { CategoryPicker, CategoryPickerTrigger } from "./CategoryPicker";
-import type { CategoryRef, InboxRow, SummaryKpis } from "@/lib/types";
+import { AddTransactionModal } from "./AddTransactionModal";
+import type { CategoryRef, InboxRow, ReconciledMatch, SummaryKpis } from "@/lib/types";
 
 type Props = {
   monthKey: string;
   initialRef: CategoryRef;
   initialRows: InboxRow[];
   summaryKpis?: SummaryKpis | null;
+  /** Placeholders absorbed by their real transaction on this load. */
+  matched?: ReconciledMatch[];
+  /** Re-fetch from the server (row numbers shift when a row is inserted). */
+  onReload?: () => void;
 };
 
-export function InboxList({ monthKey, initialRef, initialRows, summaryKpis }: Props) {
+export function InboxList({
+  monthKey,
+  initialRef,
+  initialRows,
+  summaryKpis,
+  matched,
+  onReload,
+}: Props) {
   const [ref] = useState(initialRef);
   const [rows, setRows] = useState(initialRows);
   const [openRow, setOpenRow] = useState<number | null>(null);
@@ -21,6 +33,7 @@ export function InboxList({ monthKey, initialRef, initialRows, summaryKpis }: Pr
   const [saving, setSaving] = useState<number | null>(null);
   const [deleting, setDeleting] = useState<number | null>(null);
   const [savingAmount, setSavingAmount] = useState<number | null>(null);
+  const [addOpen, setAddOpen] = useState(false);
   const [toast, setToast] = useState("");
 
   useEffect(() => {
@@ -236,6 +249,27 @@ export function InboxList({ monthKey, initialRef, initialRows, summaryKpis }: Pr
           );
         })()}
 
+        {matched && matched.length > 0 ? (
+          <div className="matched-banner" role="status">
+            <strong>
+              Matched {matched.length} manual{" "}
+              {matched.length === 1 ? "transaction" : "transactions"}
+            </strong>
+            <ul>
+              {matched.map((m, i) => (
+                <li key={`${m.desc}-${i}`}>
+                  {m.desc} ({m.amt}) → {m.matchedDesc}
+                </li>
+              ))}
+            </ul>
+          </div>
+        ) : null}
+
+        <button type="button" className="add-txn-btn" onClick={() => setAddOpen(true)}>
+          <span className="add-txn-plus" aria-hidden="true">+</span>
+          Add transaction
+        </button>
+
         <div className="section-card txn-filter-card">
           <div className="filter-bar">
             <span className="filter-label">Filter:</span>
@@ -288,6 +322,20 @@ export function InboxList({ monthKey, initialRef, initialRows, summaryKpis }: Pr
           </div>
         )}
       </div>
+
+      {addOpen ? (
+        <AddTransactionModal
+          monthKey={monthKey}
+          categoryRef={ref}
+          onClose={() => setAddOpen(false)}
+          onToast={showToast}
+          onAdded={() => {
+            setAddOpen(false);
+            // Inserting at row 2 renumbers everything below it.
+            onReload?.();
+          }}
+        />
+      ) : null}
     </>
   );
 }
@@ -418,6 +466,22 @@ function InboxItem({
             >
               Uncategorized
             </span>
+            {row.manual ? (
+              <span className="badge badge-manual" title="Added by hand — will merge with the real transaction when it posts">
+                Manual · awaiting match
+              </span>
+            ) : null}
+            {row.duplicateAmount ? (
+              <span
+                className="badge badge-dupe"
+                title={`Same amount as: ${row.duplicateAmount.others.join(", ")}`}
+              >
+                Same {row.amt} as {row.duplicateAmount.others[0]}
+                {row.duplicateAmount.count > 1
+                  ? ` +${row.duplicateAmount.count - 1}`
+                  : ""}
+              </span>
+            ) : null}
           </div>
         </button>
         {open ? (

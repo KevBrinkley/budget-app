@@ -43,12 +43,42 @@ export type SummaryData = {
 
 export type CategoryRef = Record<string, string[]>;
 
+/**
+ * Another uncategorized row in the same month sharing this row's exact amount.
+ * Only populated when the descriptions differ — same amount from the same
+ * merchant is not the ambiguous case worth warning about.
+ */
+export type DuplicateAmountInfo = {
+  count: number;
+  others: string[];
+};
+
 export type InboxRow = {
   sheetRow: number;
   amt: string;
   amount: number;
   date: string;
   desc: string;
+  /** True for a placeholder the user typed in before the bank posted it. */
+  manual?: boolean;
+  duplicateAmount?: DuplicateAmountInfo;
+};
+
+export type ManualTransactionInput = {
+  /** ISO date (YYYY-MM-DD) the purchase happened. */
+  date: string;
+  desc: string;
+  amount: number;
+  category?: string;
+  subCategory?: string;
+  travel?: boolean;
+};
+
+/** One manual placeholder absorbed into the imported row that matched it. */
+export type ReconciledMatch = {
+  desc: string;
+  amt: string;
+  matchedDesc: string;
 };
 
 export type ReferenceRow = {
