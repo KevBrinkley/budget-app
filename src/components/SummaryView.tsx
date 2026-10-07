@@ -26,6 +26,39 @@ function overUnderDelta(overUnder: number | null) {
   return formatDelta(overUnder == null ? null : -overUnder);
 }
 
+/**
+ * Projected month-end figure. Highlighted only when it exceeds spend-to-date —
+ * that gap is the committed spending the Over/under column cannot see.
+ */
+function ProjectionCell({
+  projection,
+  spend,
+  className = "",
+}: {
+  projection: number | null;
+  spend: number | null;
+  className?: string;
+}) {
+  const toCome =
+    projection != null && spend != null ? projection - spend : 0;
+  const committed = toCome > 0.005;
+  return (
+    <td
+      className={`num proj${committed ? " proj-committed" : ""} ${className}`.trim()}
+      title={
+        committed
+          ? `${formatMoneyRounded(toCome)} more expected before month end`
+          : undefined
+      }
+    >
+      {formatMoneyRounded(projection)}
+      {committed ? (
+        <span className="proj-delta">+{formatMoneyRounded(toCome)}</span>
+      ) : null}
+    </td>
+  );
+}
+
 export function SummaryView({ data, inboxOpen }: { data: SummaryData; inboxOpen?: number }) {
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
 
@@ -42,16 +75,21 @@ export function SummaryView({ data, inboxOpen }: { data: SummaryData; inboxOpen?
   }, [data.categories]);
 
   const bucketTotals = useMemo(() => {
-    const t: Record<Bucket, { spend: number | null; budget: number | null }> = {
-      Essentials: { spend: null, budget: null },
-      Want: { spend: null, budget: null },
-      Travel: { spend: null, budget: null },
+    const t: Record<
+      Bucket,
+      { spend: number | null; budget: number | null; projection: number | null }
+    > = {
+      Essentials: { spend: null, budget: null, projection: null },
+      Want: { spend: null, budget: null, projection: null },
+      Travel: { spend: null, budget: null, projection: null },
     };
     for (const cat of data.categories) {
       const b = bucketOf(cat);
       if (!b) continue;
       if (cat.spend != null) t[b].spend = (t[b].spend ?? 0) + cat.spend;
       if (cat.budget != null) t[b].budget = (t[b].budget ?? 0) + cat.budget;
+      if (cat.projection != null)
+        t[b].projection = (t[b].projection ?? 0) + cat.projection;
     }
     return t;
   }, [data.categories]);
@@ -104,7 +142,11 @@ export function SummaryView({ data, inboxOpen }: { data: SummaryData; inboxOpen?
       <div className="section-card">
         <div className="section-header">
           Category breakdown{" "}
-          <span className="section-sub">Expand a category for sub-category totals</span>
+          <span className="section-sub">
+            {data.monthIsOpen
+              ? "Projection assumes committed categories reach their budget"
+              : "Month closed — projection equals actual spend"}
+          </span>
         </div>
         <div className="table-wrap">
           <table className="data-table summary-table">
@@ -113,6 +155,7 @@ export function SummaryView({ data, inboxOpen }: { data: SummaryData; inboxOpen?
                 <th>Category</th>
                 <th className="num">Spend</th>
                 <th className="num">Budget</th>
+                <th className="num">Projection</th>
                 <th className="num">Over / under</th>
                 <th className="num hide-sm">% of total</th>
               </tr>
@@ -144,6 +187,10 @@ export function SummaryView({ data, inboxOpen }: { data: SummaryData; inboxOpen?
                     <td>Total · excl. Travel</td>
                     <td className="num">{formatMoneyRounded(kpis.totalSpend)}</td>
                     <td className="num">{formatMoneyRounded(kpis.totalBudget)}</td>
+                    <ProjectionCell
+                      projection={data.projectedTotal}
+                      spend={kpis.totalSpend}
+                    />
                     <td className="num">
                       <span className={`delta ${totd.cls}`}>{totd.text}</span>
                     </td>
@@ -177,6 +224,7 @@ export function SummaryView({ data, inboxOpen }: { data: SummaryData; inboxOpen?
                       <td>{bucket}</td>
                       <td className="num">{formatMoneyRounded(bt.spend)}</td>
                       <td className="num">{formatMoneyRounded(bt.budget)}</td>
+                      <ProjectionCell projection={bt.projection} spend={bt.spend} />
                       <td className="num">
                         <span className={`delta ${bd.cls}`}>{bd.text}</span>
                       </td>
@@ -284,6 +332,7 @@ function CategoryBlock({
           {formatMoneyRounded(cat.spend)}
         </td>
         <td className="num">—</td>
+        <ProjectionCell projection={cat.projection} spend={cat.spend} />
         <td className="num">
           <span className={`delta ${overUnderDelta(cat.overUnder).cls}`}>{overUnderDelta(cat.overUnder).text}</span>
         </td>
@@ -318,6 +367,7 @@ function CategoryBlock({
         </td>
         <td className={`num amt${spendOver ? " amt-over" : ""}`}>{formatMoneyRounded(cat.spend)}</td>
         <td className="num">{formatMoneyRounded(cat.budget)}</td>
+        <ProjectionCell projection={cat.projection} spend={cat.spend} />
         <td className="num">
           <span className={`delta ${overUnderDelta(cat.overUnder).cls}`}>
             {overUnderDelta(cat.overUnder).text}
@@ -352,6 +402,7 @@ function CategoryBlock({
             </td>
             <td className={`num amt${subOver ? " amt-over" : ""}`}>{formatMoneyRounded(sub.spend)}</td>
             <td className="num">{formatMoneyRounded(sub.budget)}</td>
+            <ProjectionCell projection={sub.projection} spend={sub.spend} />
             <td className="num">
               <span className={`delta ${overUnderDelta(sub.overUnder).cls}`}>
                 {overUnderDelta(sub.overUnder).text}

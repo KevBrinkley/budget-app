@@ -28,6 +28,11 @@ export type SummaryLineRow = {
   spend: number | null;
   budget: number | null;
   overUnder: number | null;
+  /**
+   * Where this line is expected to land by month end. Equals `spend` except
+   * for committed categories in an open month, which project to their budget.
+   */
+  projection: number | null;
   subs: SummaryLineRow[];
   isUncategorized: boolean;
 };
@@ -39,6 +44,10 @@ export type SummaryData = {
   kpis: SummaryKpis;
   categories: SummaryCategoryRow[];
   totalSpendForPct: number;
+  /** False once the month is over — projections then equal actual spend. */
+  monthIsOpen: boolean;
+  /** Projected month-end total, on the same excl.-Travel basis as the Total row. */
+  projectedTotal: number | null;
 };
 
 export type CategoryRef = Record<string, string[]>;

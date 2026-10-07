@@ -1,6 +1,9 @@
 import { readRangeValues } from "./sheets";
 import { hasTransactionsTab, transactionsTabName } from "./transaction-months";
-import { WANT_CATEGORIES } from "./constants";
+import { WANT_CATEGORIES, TRAVEL_CATEGORY } from "./constants";
+import { getSpreadsheetTimezone } from "./env";
+import { currentMonthKey } from "./month";
+import { annotateProjections, sumProjections } from "./projection";
 import type { ApiResult, SummaryCategoryRow, SummaryData, SummaryKpis } from "./types";
 
 function cellStr(v: unknown): string {
@@ -92,6 +95,7 @@ export async function getSummaryData(monthKey: string): Promise<ApiResult<Summar
         spend,
         budget,
         overUnder,
+        projection: spend, // replaced by annotateProjections below
         subs: [],
         isUncategorized: false,
       };
@@ -107,6 +111,7 @@ export async function getSummaryData(monthKey: string): Promise<ApiResult<Summar
         spend,
         budget,
         overUnder,
+        projection: spend,
         subs: [],
         isUncategorized: false,
       });
@@ -124,6 +129,7 @@ export async function getSummaryData(monthKey: string): Promise<ApiResult<Summar
       spend: kpis.uncategorizedSpend,
       budget: null,
       overUnder: kpis.uncategorizedSpend,
+      projection: kpis.uncategorizedSpend,
       subs: [],
       isUncategorized: true,
     });
@@ -141,11 +147,26 @@ export async function getSummaryData(monthKey: string): Promise<ApiResult<Summar
   kpis.wantSpend = wantSpend;
   kpis.wantBudget = wantBudget;
 
+  // A finished month gets no lift toward budget — it projects at what posted.
+  const monthIsOpen = monthKey >= currentMonthKey(getSpreadsheetTimezone());
+  const visible = annotateProjections(
+    categories.filter((c) => !c.label.endsWith("-Total")),
+    monthIsOpen,
+  );
+
+  // Projected total mirrors the Total row's excl.-Travel basis. Uncategorized
+  // is already inside the sheet's Total, so it is counted here too.
+  const projectedTotal = sumProjections(
+    visible.filter((c) => c.category.toLowerCase() !== TRAVEL_CATEGORY),
+  );
+
   return {
     ok: true,
     monthKey,
     kpis,
-    categories: categories.filter((c) => !c.label.endsWith("-Total")),
+    categories: visible,
     totalSpendForPct,
+    monthIsOpen,
+    projectedTotal,
   };
 }
