@@ -2071,3 +2071,9 @@ table.data-table {
 .summary-table tr.sum-bucket-row .proj-delta {
   color: #ffd9a8;
 }
+
+/* Over/under repeated beneath the budget figure in Summary. */
+.budget-delta {
+  display: block;
+  margin-top: 3px;
+}

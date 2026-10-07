@@ -27,6 +27,31 @@ function overUnderDelta(overUnder: number | null) {
 }
 
 /**
+ * Budget figure with its over/under repeated underneath, so the comparison is
+ * readable without tracking across to the Over / under column. Suppressed when
+ * there is no budget — "over budget" means nothing without one.
+ */
+function BudgetCell({
+  budget,
+  overUnder,
+}: {
+  budget: number | null;
+  overUnder: number | null;
+}) {
+  const d = overUnderDelta(overUnder);
+  return (
+    <td className="num">
+      {formatMoneyRounded(budget)}
+      {budget != null && overUnder != null ? (
+        <span className="budget-delta">
+          <span className={`delta ${d.cls}`}>{d.text}</span>
+        </span>
+      ) : null}
+    </td>
+  );
+}
+
+/**
  * Projected month-end figure. Highlighted only when it exceeds spend-to-date —
  * that gap is the committed spending the Over/under column cannot see.
  */
@@ -186,7 +211,10 @@ export function SummaryView({ data, inboxOpen }: { data: SummaryData; inboxOpen?
                   <tr key="bucket-total" className="sum-bucket-row sum-total-row">
                     <td>Total · excl. Travel</td>
                     <td className="num">{formatMoneyRounded(kpis.totalSpend)}</td>
-                    <td className="num">{formatMoneyRounded(kpis.totalBudget)}</td>
+                    <BudgetCell
+                      budget={kpis.totalBudget}
+                      overUnder={totOverUnder}
+                    />
                     <ProjectionCell
                       projection={data.projectedTotal}
                       spend={kpis.totalSpend}
@@ -223,7 +251,7 @@ export function SummaryView({ data, inboxOpen }: { data: SummaryData; inboxOpen?
                     <tr key={`bucket-${bucket}`} className="sum-bucket-row">
                       <td>{bucket}</td>
                       <td className="num">{formatMoneyRounded(bt.spend)}</td>
-                      <td className="num">{formatMoneyRounded(bt.budget)}</td>
+                      <BudgetCell budget={bt.budget} overUnder={bOverUnder} />
                       <ProjectionCell projection={bt.projection} spend={bt.spend} />
                       <td className="num">
                         <span className={`delta ${bd.cls}`}>{bd.text}</span>
@@ -331,7 +359,7 @@ function CategoryBlock({
         <td className={`num amt${spendOver ? " amt-over" : ""}`} style={{ color: "var(--blue)" }}>
           {formatMoneyRounded(cat.spend)}
         </td>
-        <td className="num">—</td>
+        <BudgetCell budget={cat.budget} overUnder={cat.overUnder} />
         <ProjectionCell projection={cat.projection} spend={cat.spend} />
         <td className="num">
           <span className={`delta ${overUnderDelta(cat.overUnder).cls}`}>{overUnderDelta(cat.overUnder).text}</span>
@@ -366,7 +394,7 @@ function CategoryBlock({
           <span className="sum-cat-label">{cat.label}</span>
         </td>
         <td className={`num amt${spendOver ? " amt-over" : ""}`}>{formatMoneyRounded(cat.spend)}</td>
-        <td className="num">{formatMoneyRounded(cat.budget)}</td>
+        <BudgetCell budget={cat.budget} overUnder={cat.overUnder} />
         <ProjectionCell projection={cat.projection} spend={cat.spend} />
         <td className="num">
           <span className={`delta ${overUnderDelta(cat.overUnder).cls}`}>
@@ -401,7 +429,7 @@ function CategoryBlock({
               <span className="sum-cat-label">{sub.label}</span>
             </td>
             <td className={`num amt${subOver ? " amt-over" : ""}`}>{formatMoneyRounded(sub.spend)}</td>
-            <td className="num">{formatMoneyRounded(sub.budget)}</td>
+            <BudgetCell budget={sub.budget} overUnder={sub.overUnder} />
             <ProjectionCell projection={sub.projection} spend={sub.spend} />
             <td className="num">
               <span className={`delta ${overUnderDelta(sub.overUnder).cls}`}>
