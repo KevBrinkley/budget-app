@@ -52,21 +52,31 @@ function BudgetCell({
 }
 
 /**
- * Projected month-end figure. Highlighted only when it exceeds spend-to-date —
- * that gap is the committed spending the Over/under column cannot see.
+ * Projected month-end figure, with the over/under it implies underneath.
+ *
+ * The number is emphasised only when it exceeds spend-to-date — that gap is
+ * the committed spending the Over/under column cannot see, and it is named in
+ * the tooltip. The sub-label answers the actual question: once everything
+ * committed lands, will this row be over or under budget?
  */
 function ProjectionCell({
   projection,
   spend,
+  budget,
   className = "",
 }: {
   projection: number | null;
   spend: number | null;
+  budget: number | null;
   className?: string;
 }) {
   const toCome =
     projection != null && spend != null ? projection - spend : 0;
   const committed = toCome > 0.005;
+  // Same basis as the Over/under column: (spend − budget), negated for display.
+  const projectedOverUnder =
+    projection != null && budget != null ? projection - budget : null;
+  const d = overUnderDelta(projectedOverUnder);
   return (
     <td
       className={`num proj${committed ? " proj-committed" : ""} ${className}`.trim()}
@@ -77,8 +87,10 @@ function ProjectionCell({
       }
     >
       {formatMoneyRounded(projection)}
-      {committed ? (
-        <span className="proj-delta">+{formatMoneyRounded(toCome)}</span>
+      {projectedOverUnder != null ? (
+        <span className="proj-delta">
+          <span className={`delta ${d.cls}`}>{d.text}</span>
+        </span>
       ) : null}
     </td>
   );
@@ -218,6 +230,7 @@ export function SummaryView({ data, inboxOpen }: { data: SummaryData; inboxOpen?
                     <ProjectionCell
                       projection={data.projectedTotal}
                       spend={kpis.totalSpend}
+                      budget={kpis.totalBudget}
                     />
                     <td className="num">
                       <span className={`delta ${totd.cls}`}>{totd.text}</span>
@@ -252,7 +265,11 @@ export function SummaryView({ data, inboxOpen }: { data: SummaryData; inboxOpen?
                       <td>{bucket}</td>
                       <td className="num">{formatMoneyRounded(bt.spend)}</td>
                       <BudgetCell budget={bt.budget} overUnder={bOverUnder} />
-                      <ProjectionCell projection={bt.projection} spend={bt.spend} />
+                      <ProjectionCell
+                        projection={bt.projection}
+                        spend={bt.spend}
+                        budget={bt.budget}
+                      />
                       <td className="num">
                         <span className={`delta ${bd.cls}`}>{bd.text}</span>
                       </td>
@@ -360,7 +377,11 @@ function CategoryBlock({
           {formatMoneyRounded(cat.spend)}
         </td>
         <BudgetCell budget={cat.budget} overUnder={cat.overUnder} />
-        <ProjectionCell projection={cat.projection} spend={cat.spend} />
+        <ProjectionCell
+          projection={cat.projection}
+          spend={cat.spend}
+          budget={cat.budget}
+        />
         <td className="num">
           <span className={`delta ${overUnderDelta(cat.overUnder).cls}`}>{overUnderDelta(cat.overUnder).text}</span>
         </td>
@@ -395,7 +416,11 @@ function CategoryBlock({
         </td>
         <td className={`num amt${spendOver ? " amt-over" : ""}`}>{formatMoneyRounded(cat.spend)}</td>
         <BudgetCell budget={cat.budget} overUnder={cat.overUnder} />
-        <ProjectionCell projection={cat.projection} spend={cat.spend} />
+        <ProjectionCell
+          projection={cat.projection}
+          spend={cat.spend}
+          budget={cat.budget}
+        />
         <td className="num">
           <span className={`delta ${overUnderDelta(cat.overUnder).cls}`}>
             {overUnderDelta(cat.overUnder).text}
@@ -430,7 +455,11 @@ function CategoryBlock({
             </td>
             <td className={`num amt${subOver ? " amt-over" : ""}`}>{formatMoneyRounded(sub.spend)}</td>
             <BudgetCell budget={sub.budget} overUnder={sub.overUnder} />
-            <ProjectionCell projection={sub.projection} spend={sub.spend} />
+            <ProjectionCell
+              projection={sub.projection}
+              spend={sub.spend}
+              budget={sub.budget}
+            />
             <td className="num">
               <span className={`delta ${overUnderDelta(sub.overUnder).cls}`}>
                 {overUnderDelta(sub.overUnder).text}
