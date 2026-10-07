@@ -26,25 +26,36 @@ export const WANT_CATEGORIES = new Set(
 export const TRAVEL_CATEGORY = "travel";
 
 /**
- * Categories whose remaining budget is effectively **committed** — recurring
- * bills and obligations that are guaranteed to land before month end.
+ * Categories whose remaining budget is effectively **committed** — spending
+ * that is guaranteed to land before month end, whether a fixed bill or a
+ * recurring habit.
  *
  * For these, the Summary "Projection" column reports `max(spend, budget)`
- * rather than spend-to-date, because an Obligations row showing "$1,100 under"
- * on the 5th is misleading: that $1,100 of insurance/utilities is already
+ * rather than spend-to-date, because an Obligations row showing "$1,020 under"
+ * on the 7th is misleading: that $1,020 of insurance/utilities is already
  * spoken for. Categories not listed here project at their current spend.
+ *
+ * `max` rather than a flat budget so a category already over budget projects
+ * at what has actually posted — projecting Health and Wellness to its $200
+ * budget after $249 has cleared would show it landing below money already out
+ * the door.
  *
  * Only applied to an OPEN month — a finished month projects at what actually
  * posted, never up to its budget.
  *
- * NOTE: placeholder list pending the user's own — edit freely, names are
- * matched case-insensitively against the Reference taxonomy.
+ * Names are matched case-insensitively against the Reference taxonomy.
  */
 export const PROJECTED_CATEGORIES = new Set(
   [
+    // Essentials
     "Rent/Mortgage",
     "Obligations",
-    "Subscriptions",
+    "Groceries",
+    "Transportation",
     "Health and Wellness",
+    // Want
+    "Eating Out",
+    "Golf",
+    "Subscriptions",
   ].map((s) => s.toLowerCase()),
 );
