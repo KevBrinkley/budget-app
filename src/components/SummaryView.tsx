@@ -135,8 +135,12 @@ export function SummaryView({ data, inboxOpen }: { data: SummaryData; inboxOpen?
 
   return (
     <div className="content-inner">
+      {/* In · out · will go out · left over. All four tie together:
+          income − projected spend === projected savings. The spend figures are
+          all-in (Travel included) so that identity actually holds — the table's
+          Total row below is the excl.-Travel view. */}
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-        <Link className="kpi-card" href={`/transactions?month=${data.monthKey}`}>
+        <div className="kpi-card" style={{ cursor: "default" }}>
           <div className="kpi-label">Income</div>
           <div className="kpi-value income-value">
             {formatMoneyRounded(data.income)}
@@ -148,7 +152,38 @@ export function SummaryView({ data, inboxOpen }: { data: SummaryData; inboxOpen?
                 ? `${formatMoneyRounded(data.incomeLogged)} logged · using expected total`
                 : "Expected · add income on Transactions"}
           </div>
+        </div>
+        <Link className="kpi-card" href={`/transactions?month=${data.monthKey}`}>
+          <div className="kpi-label">Spend</div>
+          <div className="kpi-value">{formatMoneyRounded(data.spendAll)}</div>
+          <div className="kpi-sub">
+            {data.income != null && data.spendAll != null
+              ? `${formatMoneyRounded(data.income - data.spendAll)} left of income`
+              : "So far this month"}
+          </div>
         </Link>
+      </div>
+
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+        <div className="kpi-card" style={{ cursor: "default" }}>
+          <div className="kpi-label">Projected spend</div>
+          <div
+            className={`kpi-value${
+              data.income != null &&
+              data.projectedSpendAll != null &&
+              data.projectedSpendAll > data.income
+                ? " warn"
+                : ""
+            }`}
+          >
+            {formatMoneyRounded(data.projectedSpendAll)}
+          </div>
+          <div className="kpi-sub">
+            {data.projectedSpendAll != null && data.spendAll != null
+              ? `${formatMoneyRounded(data.projectedSpendAll - data.spendAll)} still to come`
+              : "At month end"}
+          </div>
+        </div>
         <div className="kpi-card" style={{ cursor: "default" }}>
           <div className="kpi-label">Projected savings</div>
           <div

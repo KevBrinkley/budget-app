@@ -49,6 +49,13 @@ export type SummaryData = {
   /** Projected month-end total, on the same excl.-Travel basis as the Total row. */
   projectedTotal: number | null;
   /**
+   * Actual and projected spend across EVERY category, Travel included. The
+   * cards use these rather than the excl.-Travel Total so that
+   * income − projectedSpendAll === projectedSavings holds exactly.
+   */
+  spendAll: number | null;
+  projectedSpendAll: number | null;
+  /**
    * Income used for the month — logged entries once they add up to a full
    * month, otherwise the expected default. See `resolveMonthIncome`.
    */

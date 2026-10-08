@@ -165,6 +165,10 @@ export async function getSummaryData(monthKey: string): Promise<ApiResult<Summar
   // Savings is a cash question, so it nets income against EVERY projected
   // dollar out — Travel included, even though the Total row excludes it.
   const projectedSpendAll = sumProjections(visible);
+  const spendAll = visible.reduce<number | null>(
+    (sum, c) => (c.spend == null ? sum : (sum ?? 0) + c.spend),
+    null,
+  );
   const resolvedIncome = resolveMonthIncome(
     await getIncomeTotal(monthKey),
     monthIsOpen,
@@ -180,6 +184,8 @@ export async function getSummaryData(monthKey: string): Promise<ApiResult<Summar
     totalSpendForPct,
     monthIsOpen,
     projectedTotal,
+    spendAll,
+    projectedSpendAll,
     income,
     incomeLogged: resolvedIncome.logged,
     incomeSource: resolvedIncome.source,
