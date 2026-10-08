@@ -5,6 +5,7 @@ import { getSpreadsheetTimezone } from "./env";
 import { currentMonthKey } from "./month";
 import { annotateProjections, sumProjections } from "./projection";
 import { getIncomeTotal } from "./income";
+import { resolveMonthIncome } from "./income-resolve";
 import type { ApiResult, SummaryCategoryRow, SummaryData, SummaryKpis } from "./types";
 
 function cellStr(v: unknown): string {
@@ -164,9 +165,12 @@ export async function getSummaryData(monthKey: string): Promise<ApiResult<Summar
   // Savings is a cash question, so it nets income against EVERY projected
   // dollar out — Travel included, even though the Total row excludes it.
   const projectedSpendAll = sumProjections(visible);
-  const income = await getIncomeTotal(monthKey);
-  const projectedSavings =
-    income == null ? null : income - (projectedSpendAll ?? 0);
+  const resolvedIncome = resolveMonthIncome(
+    await getIncomeTotal(monthKey),
+    monthIsOpen,
+  );
+  const income = resolvedIncome.income;
+  const projectedSavings = income - (projectedSpendAll ?? 0);
 
   return {
     ok: true,
@@ -177,6 +181,8 @@ export async function getSummaryData(monthKey: string): Promise<ApiResult<Summar
     monthIsOpen,
     projectedTotal,
     income,
+    incomeLogged: resolvedIncome.logged,
+    incomeSource: resolvedIncome.source,
     projectedSavings,
   };
 }

@@ -48,8 +48,15 @@ export type SummaryData = {
   monthIsOpen: boolean;
   /** Projected month-end total, on the same excl.-Travel basis as the Total row. */
   projectedTotal: number | null;
-  /** Logged income for the month. Null when the Income tab does not exist yet. */
+  /**
+   * Income used for the month — logged entries once they add up to a full
+   * month, otherwise the expected default. See `resolveMonthIncome`.
+   */
   income: number | null;
+  /** What was actually logged, regardless of which figure `income` uses. */
+  incomeLogged: number | null;
+  /** Whether `income` came from logged entries or fell back to the default. */
+  incomeSource: "logged" | "default";
   /**
    * Income minus ALL projected spend, Travel included — savings is a cash
    * question, so travel money counts as money not saved even though the

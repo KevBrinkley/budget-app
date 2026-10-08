@@ -139,12 +139,14 @@ export function SummaryView({ data, inboxOpen }: { data: SummaryData; inboxOpen?
         <Link className="kpi-card" href={`/transactions?month=${data.monthKey}`}>
           <div className="kpi-label">Income</div>
           <div className="kpi-value income-value">
-            {data.income == null ? "—" : formatMoneyRounded(data.income)}
+            {formatMoneyRounded(data.income)}
           </div>
           <div className="kpi-sub">
-            {data.income == null
-              ? "Add income on Transactions"
-              : "Logged this month"}
+            {data.incomeSource === "logged"
+              ? "Logged this month"
+              : data.incomeLogged != null
+                ? `${formatMoneyRounded(data.incomeLogged)} logged · using expected total`
+                : "Expected · add income on Transactions"}
           </div>
         </Link>
         <div className="kpi-card" style={{ cursor: "default" }}>
@@ -158,11 +160,7 @@ export function SummaryView({ data, inboxOpen }: { data: SummaryData; inboxOpen?
               ? "—"
               : formatMoneyRounded(data.projectedSavings)}
           </div>
-          <div className="kpi-sub">
-            {data.projectedSavings == null
-              ? "Needs income to calculate"
-              : "Income less all projected spend"}
-          </div>
+          <div className="kpi-sub">Income less all projected spend</div>
         </div>
       </div>
 

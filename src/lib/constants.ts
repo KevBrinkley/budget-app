@@ -59,3 +59,21 @@ export const PROJECTED_CATEGORIES = new Set(
     "Subscriptions",
   ].map((s) => s.toLowerCase()),
 );
+
+/**
+ * Expected monthly income, mirroring the `Income` row on the sheet's
+ * "Yearly Projection" tab. Used when logged income does not yet add up to a
+ * full month — see `resolveMonthIncome`.
+ */
+export const DEFAULT_MONTHLY_INCOME = 11888;
+
+/**
+ * Share of DEFAULT_MONTHLY_INCOME that logged income must reach before it is
+ * trusted as the month's real total.
+ *
+ * Pay is bimonthly, so one cheque lands near 50% of the month — far below this
+ * and treated as incomplete. Two real cheques (e.g. 5,500 + 5,700 = 11,200,
+ * i.e. 94%) clear it comfortably and override the default, which is the point:
+ * the actual total is rarely exactly 11,888.
+ */
+export const INCOME_OVERRIDE_THRESHOLD = 0.75;
