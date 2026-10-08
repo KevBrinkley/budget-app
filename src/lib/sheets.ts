@@ -148,3 +148,27 @@ export async function insertRowAt(
   const endCol = String.fromCharCode("A".charCodeAt(0) + values.length - 1);
   await writeRange(`'${sheetName}'!A${rowNumber}:${endCol}${rowNumber}`, [values]);
 }
+
+/** Append a row to the bottom of a tab's data. */
+export async function appendRow(sheetName: string, values: unknown[]) {
+  const sheets = getSheetsClient();
+  await sheets.spreadsheets.values.append({
+    spreadsheetId: getSpreadsheetId(),
+    range: `'${sheetName}'!A:Z`,
+    valueInputOption: "USER_ENTERED",
+    insertDataOption: "INSERT_ROWS",
+    requestBody: { values: [values] },
+  });
+}
+
+/** Create a tab if it does not exist. Returns true when one was created. */
+export async function createSheetTabIfMissing(title: string): Promise<boolean> {
+  if ((await getSheetIdByName(title)) != null) return false;
+  const sheets = getSheetsClient();
+  await sheets.spreadsheets.batchUpdate({
+    spreadsheetId: getSpreadsheetId(),
+    requestBody: { requests: [{ addSheet: { properties: { title } } }] },
+  });
+  sheetIdCache.delete(title);
+  return true;
+}

@@ -48,6 +48,14 @@ export type SummaryData = {
   monthIsOpen: boolean;
   /** Projected month-end total, on the same excl.-Travel basis as the Total row. */
   projectedTotal: number | null;
+  /** Logged income for the month. Null when the Income tab does not exist yet. */
+  income: number | null;
+  /**
+   * Income minus ALL projected spend, Travel included — savings is a cash
+   * question, so travel money counts as money not saved even though the
+   * Total row tracks it separately.
+   */
+  projectedSavings: number | null;
 };
 
 export type CategoryRef = Record<string, string[]>;
@@ -88,6 +96,18 @@ export type ReconciledMatch = {
   desc: string;
   amt: string;
   matchedDesc: string;
+};
+
+export type IncomeRow = {
+  /** 1-based row in the Income tab. */
+  sheetRow: number;
+  /** ISO date (YYYY-MM-DD) as stored. */
+  date: string;
+  /** Short display date, e.g. "Oct 3". */
+  dateLabel: string;
+  source: string;
+  amount: number;
+  amt: string;
 };
 
 export type ReferenceRow = {

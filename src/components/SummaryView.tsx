@@ -137,42 +137,32 @@ export function SummaryView({ data, inboxOpen }: { data: SummaryData; inboxOpen?
     <div className="content-inner">
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
         <Link className="kpi-card" href={`/transactions?month=${data.monthKey}`}>
-          <div className="kpi-label">Total spend</div>
-          <div className="kpi-value">{formatMoneyRounded(kpis.totalSpend)}</div>
+          <div className="kpi-label">Income</div>
+          <div className="kpi-value income-value">
+            {data.income == null ? "—" : formatMoneyRounded(data.income)}
+          </div>
           <div className="kpi-sub">
-            {kpis.totalBudget != null ? (
-              <span className={`delta ${formatDelta((kpis.totalSpend ?? 0) - kpis.totalBudget).cls}`}>
-                {formatDelta((kpis.totalSpend ?? 0) - kpis.totalBudget).text}
-              </span>
-            ) : null}{" "}
-            vs budget
+            {data.income == null
+              ? "Add income on Transactions"
+              : "Logged this month"}
           </div>
         </Link>
-        <Link className="kpi-card" href={`/inbox?month=${data.monthKey}`}>
-          <div className="kpi-label">Uncategorized</div>
-          <div className="kpi-value warn">{formatMoneyRounded(kpis.uncategorizedSpend)}</div>
-          <div className="kpi-sub">
-            {inboxOpen != null ? `${inboxOpen} open · ` : ""}
-            {kpis.uncategorizedSpend != null && kpis.uncategorizedSpend > 0 ? (
-              <span className={`delta ${formatDelta(kpis.uncategorizedSpend).cls}`}>
-                {formatDelta(kpis.uncategorizedSpend).text}
-              </span>
-            ) : null}
-          </div>
-        </Link>
-      </div>
-
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-        <WantCard kpis={kpis} />
         <div className="kpi-card" style={{ cursor: "default" }}>
-          <div className="kpi-label">Travel</div>
-          <div className="kpi-value">
-            {formatMoneyRounded(
-              data.categories.find((c) => c.category.toLowerCase() === "travel")?.spend ??
-                null,
-            )}
+          <div className="kpi-label">Projected savings</div>
+          <div
+            className={`kpi-value${
+              data.projectedSavings != null && data.projectedSavings < 0 ? " warn" : ""
+            }`}
+          >
+            {data.projectedSavings == null
+              ? "—"
+              : formatMoneyRounded(data.projectedSavings)}
           </div>
-          <div className="kpi-sub">This month</div>
+          <div className="kpi-sub">
+            {data.projectedSavings == null
+              ? "Needs income to calculate"
+              : "Income less all projected spend"}
+          </div>
         </div>
       </div>
 
@@ -296,38 +286,6 @@ export function SummaryView({ data, inboxOpen }: { data: SummaryData; inboxOpen?
           View all transactions
         </Link>
       </div>
-    </div>
-  );
-}
-
-function WantCard({ kpis }: { kpis: SummaryData["kpis"] }) {
-  const overUnder =
-    kpis.wantSpend != null && kpis.wantBudget != null
-      ? kpis.wantBudget - kpis.wantSpend
-      : null;
-  return (
-    <div className="kpi-card" style={{ cursor: "default" }}>
-      <div className="kpi-label">Want</div>
-      <div className="kpi-value">
-        {formatMoneyRounded(kpis.wantSpend)}
-        {overUnder != null ? (
-          <span
-            style={{
-              marginLeft: 8,
-              fontSize: 15,
-              fontWeight: 700,
-              color: overUnder >= 0 ? "var(--green)" : "var(--red)",
-            }}
-          >
-            (
-            {overUnder >= 0
-              ? `$${Math.round(overUnder).toLocaleString("en-US")} under`
-              : `$${Math.round(Math.abs(overUnder)).toLocaleString("en-US")} over`}
-            )
-          </span>
-        ) : null}
-      </div>
-      <div className="kpi-sub">Discretionary spending vs budget</div>
     </div>
   );
 }

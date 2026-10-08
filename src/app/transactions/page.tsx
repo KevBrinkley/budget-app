@@ -6,6 +6,7 @@ import { AppShell } from "@/components/AppShell";
 import { MonthPicker } from "@/components/MonthPicker";
 import { SetupBanner } from "@/components/SetupBanner";
 import { TransactionsTable } from "@/components/TransactionsTable";
+import { IncomeSection } from "@/components/IncomeSection";
 import { useBudgetMonth } from "@/hooks/useBudgetMonth";
 import { formatMonthLabel } from "@/lib/month";
 import type { CategoryRef, SummaryKpis, TransactionRow } from "@/lib/types";
@@ -95,15 +96,20 @@ function TransactionsPageInner() {
         </div>
       ) : null}
       {!loading ? (
-        <TransactionsTable
-          monthKey={monthKey}
-          initialRef={ref}
-          initialRows={rows}
-          filterCategory={filterCategory}
-          filterSub={filterSub}
-          summaryKpis={summaryKpis}
-          inboxOpen={inboxOpen}
-        />
+        <>
+          <div className="content-inner">
+            <IncomeSection monthKey={monthKey} onChanged={load} />
+          </div>
+          <TransactionsTable
+            monthKey={monthKey}
+            initialRef={ref}
+            initialRows={rows}
+            filterCategory={filterCategory}
+            filterSub={filterSub}
+            summaryKpis={summaryKpis}
+            inboxOpen={inboxOpen}
+          />
+        </>
       ) : (
         <div className="content-inner">
           <p style={{ color: "var(--gray-5)", fontSize: 14 }}>Loading…</p>

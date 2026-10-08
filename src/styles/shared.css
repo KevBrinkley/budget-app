@@ -2071,3 +2071,38 @@ table.data-table {
   display: block;
   margin-top: 3px;
 }
+
+/* ---- Income (transactions page) ---- */
+.income-amt { color: var(--green); }
+.income-remove {
+  background: none;
+  border: none;
+  color: var(--red);
+  font-family: var(--font);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 0;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.income-remove:disabled { color: var(--gray-4); cursor: default; }
+.income-form {
+  display: grid;
+  gap: 10px;
+}
+.income-form-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+@media (min-width: 640px) {
+  .income-form {
+    grid-template-columns: 1fr 1.6fr 1fr;
+    align-items: end;
+  }
+  .income-form-actions {
+    grid-column: 1 / -1;
+  }
+}
+.kpi-value.income-value { color: var(--green); }
